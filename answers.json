@@ -1,0 +1,270 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "¿Quién pintó la Mona Lisa?",
+      "options": {
+        "A": "Van Gogh",
+        "B": "Picasso",
+        "C": "Dalí",
+        "D": "Leonardo da Vinci"
+      },
+      "correctAnswer": "D",
+      "explanation": "Fue un genio del Renacimiento. La Mona Lisa es su obra más famosa.",
+      "difficulty": 1
+    },
+    {
+      "id": 2,
+      "question": "¿Cómo se dice \"jamón\" en portugués?",
+      "options": {
+        "A": "Presunto",
+        "B": "Jamón",
+        "C": "Chorizón",
+        "D": "Porquito triste"
+      },
+      "correctAnswer": "A",
+      "explanation": "En Brasil, \"presunto\" es jamón. Pero \"presunto criminoso\" no es comida.",
+      "difficulty": 2
+    },
+    {
+      "id": 3,
+      "question": "¿Cuál es la bebida nacional de Brasil, que te hace bailar samba?",
+      "options": {
+        "A": "Caipirinha",
+        "B": "Cerveza",
+        "C": "Agua de coco",
+        "D": "Agua bendita de Copacabana"
+      },
+      "correctAnswer": "A",
+      "explanation": "La caipirinha lleva cachaça, limón y azúcar. Es muy brasileña.",
+      "difficulty": 3
+    },
+    {
+      "id": 4,
+      "question": "¿Cuántos elementos tiene la tabla periódica actual?",
+      "options": {
+        "A": "98",
+        "B": "102",
+        "C": "118",
+        "D": "120"
+      },
+      "correctAnswer": "C",
+      "explanation": "La tabla tiene 118 elementos reconocidos oficialmente.",
+      "difficulty": 4
+    },
+    {
+      "id": 5,
+      "question": "¿Cómo se dice \"palomitas de maíz\" en Brasil?",
+      "options": {
+        "A": "Pipocas",
+        "B": "Pocas",
+        "C": "Popotocas",
+        "D": "Explosivas de maíz"
+      },
+      "correctAnswer": "A",
+      "explanation": "\"Pipoca\" es palomita. En Brasil es clásico en el cine.",
+      "difficulty": 5
+    },
+    {
+      "id": 6,
+      "question": "¿Cómo se llama el café que no tiene energía en Brasil?",
+      "options": {
+        "A": "Café sem açúcar",
+        "B": "Café sem graça",
+        "C": "Café descafeinado",
+        "D": "Café con samba"
+      },
+      "correctAnswer": "C",
+      "explanation": "El café descafeinado no tiene cafeína. Triste pero cierto.",
+      "difficulty": 6
+    },
+    {
+      "id": 7,
+      "question": "¿Qué hace una abeja en el gimnasio?",
+      "options": {
+        "A": "Zumba",
+        "B": "Pica a los musculosos",
+        "C": "Mueve la colmena",
+        "D": "Se va a tomar miel"
+      },
+      "correctAnswer": "A",
+      "explanation": "Es un chiste: \"Zumba\", como el baile, pero de abejas.",
+      "difficulty": 7
+    },
+    {
+      "id": 8,
+      "question": "¿Qué pasa si un brasileño te dice que está en una \"pindaíba\"?",
+      "options": {
+        "A": "Que está pescando",
+        "B": "Que está feliz",
+        "C": "Que está sin dinero",
+        "D": "Que está bailando forró"
+      },
+      "correctAnswer": "C",
+      "explanation": "\"Estar na pindaíba\" en Brasil significa estar sin un centavo… ni para el bus. ¡Pobre pero con swing!",
+      "difficulty": 8
+    },
+    {
+      "id": 9,
+      "question": "¿Cuál es el hueso más pequeño del cuerpo humano?",
+      "options": {
+        "A": "El meñique",
+        "B": "El estribo",
+        "C": "El escafoides",
+        "D": "El tabique"
+      },
+      "correctAnswer": "B",
+      "explanation": "Está en el oído. Mide apenas unos milímetros.",
+      "difficulty": 9
+    },
+    {
+      "id": 10,
+      "question": "¿Qué sucede si un pez se cae de una pecera?",
+      "options": {
+        "A": "Nada",
+        "B": "Se ahoga",
+        "C": "Nada y luego camina",
+        "D": "Pide ayuda por WhatsApp"
+      },
+      "correctAnswer": "A",
+      "explanation": "Es un juego de palabras. \"Nada\"… porque un pez nada.",
+      "difficulty": 10
+    },
+    {
+      "id": 11,
+      "question": "¿Qué animal puede vivir varios días sin cabeza?",
+      "options": {
+        "A": "Pollo",
+        "B": "Pulpo",
+        "C": "Cucaracha",
+        "D": "Lagartija"
+      },
+      "correctAnswer": "C",
+      "explanation": "Las cucarachas sobreviven días sin cabeza. Aterrador pero cierto.",
+      "difficulty": 11
+    },
+    {
+      "id": 12,
+      "question": "¿Por qué los pájaros no usan WhatsApp?",
+      "options": {
+        "A": "Porque no tienen dedos",
+        "B": "Porque se les cae el celular",
+        "C": "Porque ya tienen Twitter",
+        "D": "Porque usan palomas"
+      },
+      "correctAnswer": "C",
+      "explanation": "Chiste moderno. Twitter ya es su red social natural.",
+      "difficulty": 12
+    },
+    {
+      "id": 13,
+      "question": "¿Cuál es el país con más lagos del mundo?",
+      "options": {
+        "A": "Canadá",
+        "B": "Rusia",
+        "C": "Finlandia",
+        "D": "Noruega"
+      },
+      "correctAnswer": "A",
+      "explanation": "Canadá tiene más de 2 millones de lagos. Increíble pero real.",
+      "difficulty": 13
+    },
+    {
+      "id": 14,
+      "question": "¿Qué país tiene como himno nacional sin letra?",
+      "options": {
+        "A": "España",
+        "B": "Suiza",
+        "C": "Japón",
+        "D": "Grecia"
+      },
+      "correctAnswer": "A",
+      "explanation": "El himno español es solo música. No tiene letra oficial.",
+      "difficulty": 14
+    },
+    {
+      "id": 15,
+      "question": "¿Qué país tiene el nombre más corto del mundo?",
+      "options": {
+        "A": "Chad",
+        "B": "Laos",
+        "C": "Omán",
+        "D": "Perú"
+      },
+      "correctAnswer": "A",
+      "explanation": "Chad tiene solo 4 letras y una sílaba. No hay más corto.",
+      "difficulty": 15
+    },
+    {
+      "id": 16,
+      "question": "¿En qué parte del cuerpo está el hueso \"radio\"?",
+      "options": {
+        "A": "Pierna",
+        "B": "Brazo",
+        "C": "Pie",
+        "D": "Cráneo"
+      },
+      "correctAnswer": "B",
+      "explanation": "El radio es uno de los huesos del antebrazo.",
+      "difficulty": 16
+    },
+    {
+      "id": 17,
+      "question": "¿Qué animal puede dormir de pie?",
+      "options": {
+        "A": "Perro",
+        "B": "Vaca",
+        "C": "Gato",
+        "D": "El de la reunión del lunes"
+      },
+      "correctAnswer": "B",
+      "explanation": "Las vacas pueden dormir paradas. Aunque a veces también se tumban.",
+      "difficulty": 17
+    },
+    {
+      "id": 18,
+      "question": "¿Qué es un \"rolê\" en Brasil?",
+      "options": {
+        "A": "Un tipo de pan",
+        "B": "Una fiesta",
+        "C": "Una salida sin rumbo",
+        "D": "Una pelea de samba"
+      },
+      "correctAnswer": "C",
+      "explanation": "\"Dar un rolê\" es salir por ahí sin plan, solo por pasear.",
+      "difficulty": 18
+    },
+    {
+      "id": 19,
+      "question": "¿Qué palabra portuguesa suena a insulto pero es rica?",
+      "options": {
+        "A": "Coxinha",
+        "B": "Macaxeira",
+        "C": "Tapioca",
+        "D": "Bicho feio"
+      },
+      "correctAnswer": "A",
+      "explanation": "La coxinha es pollo empanado. Rica aunque suene fuerte.",
+      "difficulty": 19
+    },
+    {
+      "id": 20,
+      "question": "¿Cómo se dice \"broma\" o \"chiste\" en portugués?",
+      "options": {
+        "A": "Risada",
+        "B": "Piada",
+        "C": "Risito",
+        "D": "Fofoca"
+      },
+      "correctAnswer": "B",
+      "explanation": "\"Piada\" es chiste en portugués. No confundir con pizza.",
+      "difficulty": 20
+    }
+  ],
+  "metadata": {
+    "totalQuestions": 20,
+    "version": "1.0",
+    "lastUpdated": "2025-01-31",
+    "description": "Preguntas divertidas con temática brasileña y general para el juego ¿Quién Quiere Ser Millonario?"
+  }
+}

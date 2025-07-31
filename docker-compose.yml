@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: centavo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - web
+      - default
+
+  quiz:
+    build: .
+    container_name: quiz
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    # .env root
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    environment:
+      - CURRENCY_API_KEY=${CURRENCY_API_KEY}
+      - CURRENCY_API_BASE_URL=https://api.currencyapi.com/v3
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - PORT=8080
+      - CRON_SCHEDULE=0 8 * * *
+      - NODE_ENV=production
+      - TZ=America/Bogota
+      - VIRTUAL_HOST=dafiti.backsoul.com.co
+      - VIRTUAL_PORT=8080
+      - LETSENCRYPT_HOST=dafiti.backsoul.com.co
+      - LETSENCRYPT_EMAIL=danielsarmientoenterprise@gmail.com
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - web
+      - default
+
+volumes:
+  redis_data:
+
+networks:
+  web:
+    external: true
