@@ -31,8 +31,8 @@ type APIResponse struct {
 
 // QuestionResponse respuesta específica para preguntas
 type QuestionResponse struct {
-	Question    *Question `json:"question,omitempty"`
-	Questions   []Question `json:"questions,omitempty"`
-	Count       int       `json:"count,omitempty"`
-	Metadata    interface{} `json:"metadata,omitempty"`
+	Question  *Question   `json:"question,omitempty"`
+	Questions []Question  `json:"questions,omitempty"`
+	Count     int         `json:"count,omitempty"`
+	Metadata  interface{} `json:"metadata,omitempty"`
 }

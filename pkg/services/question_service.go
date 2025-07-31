@@ -26,7 +26,7 @@ func NewQuestionService(redisClient *redis.RedisClient) *QuestionService {
 // LoadQuestionsFromFile carga las preguntas desde el archivo JSON a Redis
 func (s *QuestionService) LoadQuestionsFromFile(filePath string) error {
 	log.Printf("📂 Cargando preguntas desde: %s", filePath)
-	
+
 	// Leer el archivo JSON
 	jsonData, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *QuestionService) GetRandomQuestionByDifficulty(minDifficulty, maxDiffic
 	// Semilla aleatoria
 	rand.Seed(time.Now().UnixNano())
 	randomIndex := rand.Intn(len(questions))
-	
+
 	return &questions[randomIndex], nil
 }
 
@@ -175,7 +175,7 @@ func (s *QuestionService) HealthCheck() error {
 // ReloadQuestions recarga las preguntas desde el archivo JSON
 func (s *QuestionService) ReloadQuestions(filePath string) error {
 	log.Println("🔄 Recargando preguntas...")
-	
+
 	if err := s.LoadQuestionsFromFile(filePath); err != nil {
 		return fmt.Errorf("error recargando preguntas: %v", err)
 	}

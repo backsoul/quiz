@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -64,7 +65,7 @@ func NewRedisClient(addr, password string, db int) *RedisClient {
 // LoadQuestionsFromJSON carga las preguntas desde un archivo JSON a Redis
 func (r *RedisClient) LoadQuestionsFromJSON(jsonData []byte) error {
 	var questionsData QuestionsData
-	
+
 	if err := json.Unmarshal(jsonData, &questionsData); err != nil {
 		return fmt.Errorf("error parsing JSON: %v", err)
 	}
@@ -95,11 +96,11 @@ func (r *RedisClient) LoadQuestionsFromJSON(jsonData []byte) error {
 	for i, q := range questionsData.Questions {
 		questionIDs[i] = q.ID
 	}
-	
+
 	if err := r.client.Del(r.ctx, "quiz:question_ids").Err(); err != nil {
 		log.Printf("⚠️ Error limpiando lista de IDs: %v", err)
 	}
-	
+
 	if len(questionIDs) > 0 {
 		if err := r.client.SAdd(r.ctx, "quiz:question_ids", questionIDs...).Err(); err != nil {
 			log.Printf("⚠️ Error guardando lista de IDs: %v", err)
@@ -124,7 +125,7 @@ func (r *RedisClient) SaveQuestion(question Question) error {
 // GetQuestion obtiene una pregunta específica por ID
 func (r *RedisClient) GetQuestion(id int) (*Question, error) {
 	key := fmt.Sprintf("quiz:question:%d", id)
-	
+
 	questionJSON, err := r.client.Get(r.ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -256,4 +257,38 @@ func (r *RedisClient) HealthCheck() error {
 		return fmt.Errorf("redis health check failed: %v", err)
 	}
 	return nil
+}
+
+// Set guarda un valor con TTL opcional
+func (r *RedisClient) Set(key, value string, ttl time.Duration) error {
+	return r.client.Set(r.ctx, key, value, ttl).Err()
+}
+
+// Get obtiene un valor por clave
+func (r *RedisClient) Get(key string) (string, error) {
+	result, err := r.client.Get(r.ctx, key).Result()
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+// AddToSet agrega un elemento a un conjunto
+func (r *RedisClient) AddToSet(key, value string) error {
+	return r.client.SAdd(r.ctx, key, value).Err()
+}
+
+// RemoveFromSet remueve un elemento de un conjunto
+func (r *RedisClient) RemoveFromSet(key, value string) error {
+	return r.client.SRem(r.ctx, key, value).Err()
+}
+
+// GetSetMembers obtiene todos los miembros de un conjunto
+func (r *RedisClient) GetSetMembers(key string) ([]string, error) {
+	return r.client.SMembers(r.ctx, key).Result()
+}
+
+// GetKeysByPattern obtiene claves que coinciden con un patrón
+func (r *RedisClient) GetKeysByPattern(pattern string) ([]string, error) {
+	return r.client.Keys(r.ctx, pattern).Result()
 }

@@ -9,13 +9,19 @@ import (
 	"github.com/backsoul/quiz/pkg/handlers"
 	"github.com/backsoul/quiz/pkg/redis"
 	"github.com/backsoul/quiz/pkg/services"
+	"github.com/backsoul/quiz/pkg/websocket"
 	"github.com/valyala/fasthttp"
 )
 
 var (
-	redisClient      *redis.RedisClient
-	questionService  *services.QuestionService
-	questionHandler  *handlers.QuestionHandler
+	redisClient        *redis.RedisClient
+	questionService    *services.QuestionService
+	sessionService     *services.SessionService
+	gameStateService   *services.GameStateService
+	questionHandler    *handlers.QuestionHandler
+	sessionHandler     *handlers.SessionHandler
+	gameControlHandler *handlers.GameControlHandler
+	hub                *websocket.Hub
 )
 
 func main() {
@@ -61,12 +67,22 @@ func initRedis() {
 func initServices() {
 	log.Println("⚙️  Inicializando servicios...")
 	questionService = services.NewQuestionService(redisClient)
+	sessionService = services.NewSessionService(redisClient)
+	gameStateService = services.NewGameStateService(redisClient)
+
+	// Inicializar WebSocket Hub
+	hub = websocket.NewHub()
+	go hub.Run()
+
+	// Inicializar handlers
 	questionHandler = handlers.NewQuestionHandler(questionService)
+	sessionHandler = handlers.NewSessionHandler(sessionService, questionService)
+	gameControlHandler = handlers.NewGameControlHandler(gameStateService, hub)
 }
 
 func loadInitialQuestions() {
 	log.Println("📚 Cargando preguntas iniciales...")
-	
+
 	// Verificar si ya hay preguntas en Redis
 	count, err := questionService.GetQuestionCount()
 	if err == nil && count > 0 {
@@ -95,7 +111,7 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 	// Configurar headers de respuesta
 	ctx.Response.Header.Set("Server", "Quiz-FastHTTP/1.0")
 	ctx.Response.Header.Set("Cache-Control", "no-cache")
-	
+
 	// Headers CORS para desarrollo
 	ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
 	ctx.Response.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -118,9 +134,11 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		ctx.SetStatusCode(fasthttp.StatusNotFound)
 		ctx.SetBodyString("🎮")
 
-	// API Routes
+	// API Routes - Health
 	case path == "/api/health":
 		questionHandler.HealthCheck(ctx)
+
+	// API Routes - Questions
 	case path == "/api/questions" && method == "GET":
 		questionHandler.GetAllQuestions(ctx)
 	case path == "/api/questions/random" && method == "GET":
@@ -133,6 +151,30 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		questionHandler.GetQuestionMetadata(ctx)
 	case path == "/api/questions/reload" && method == "POST":
 		questionHandler.ReloadQuestions(ctx)
+
+	// API Routes - Sessions
+	case path == "/api/sessions" && method == "POST":
+		sessionHandler.CreateSession(ctx)
+	case path == "/api/sessions/active" && method == "GET":
+		sessionHandler.GetActiveSessions(ctx)
+	case path == "/api/sessions/players" && method == "GET":
+		sessionHandler.GetPlayerNames(ctx)
+	case path == "/api/leaderboard" && method == "GET":
+		sessionHandler.GetLeaderboard(ctx)
+
+	// API Routes - Game Control
+	case path == "/api/game/start" && method == "POST":
+		gameControlHandler.StartGame(ctx)
+	case path == "/api/game/end" && method == "POST":
+		gameControlHandler.EndGame(ctx)
+	case path == "/api/game/state" && method == "GET":
+		gameControlHandler.GetGameState(ctx)
+
+	// WebSocket Route
+	case path == "/ws":
+		gameControlHandler.HandleWebSocket(ctx)
+
+	// API Routes - Individual Questions and Sessions (with parameters)
 	case strings.HasPrefix(path, "/api/questions/") && method == "GET":
 		// Manejar /api/questions/{id}
 		parts := strings.Split(path, "/")
@@ -142,6 +184,10 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		} else {
 			serve404(ctx)
 		}
+	case strings.HasPrefix(path, "/api/sessions/") && method == "GET":
+		handleSessionGetRoutes(ctx, path)
+	case strings.HasPrefix(path, "/api/sessions/") && method == "POST":
+		handleSessionPostRoutes(ctx, path)
 
 	default:
 		serve404(ctx)
@@ -277,6 +323,7 @@ func serve404(ctx *fasthttp.RequestCtx) {
 			</div>
 			<div class="api-info">
 				<h3>🔧 Endpoints API disponibles:</h3>
+				<h4>📊 Preguntas:</h4>
 				<div class="endpoint">GET /api/health</div>
 				<div class="endpoint">GET /api/questions</div>
 				<div class="endpoint">GET /api/questions/{id}</div>
@@ -285,6 +332,17 @@ func serve404(ctx *fasthttp.RequestCtx) {
 				<div class="endpoint">GET /api/questions/random/difficulty?min=1&max=5</div>
 				<div class="endpoint">GET /api/questions/metadata</div>
 				<div class="endpoint">POST /api/questions/reload</div>
+				<h4>👤 Sesiones:</h4>
+				<div class="endpoint">POST /api/sessions</div>
+				<div class="endpoint">GET /api/sessions/{id}</div>
+				<div class="endpoint">GET /api/sessions/active</div>
+				<div class="endpoint">GET /api/sessions/players</div>
+				<div class="endpoint">GET /api/sessions/player/{playerName}</div>
+				<div class="endpoint">GET /api/sessions/player/{playerName}/history</div>
+				<div class="endpoint">POST /api/sessions/{id}/answer</div>
+				<div class="endpoint">POST /api/sessions/{id}/lifeline</div>
+				<div class="endpoint">POST /api/sessions/{id}/finish</div>
+				<div class="endpoint">GET /api/leaderboard</div>
 			</div>
 		</body>
 		</html>
@@ -296,4 +354,58 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func handleSessionGetRoutes(ctx *fasthttp.RequestCtx, path string) {
+	parts := strings.Split(path, "/")
+
+	// /api/sessions/player/{playerName}
+	if len(parts) == 5 && parts[1] == "api" && parts[2] == "sessions" && parts[3] == "player" {
+		ctx.SetUserValue("playerName", parts[4])
+		sessionHandler.GetPlayerSession(ctx)
+		return
+	}
+
+	// /api/sessions/player/{playerName}/history
+	if len(parts) == 6 && parts[1] == "api" && parts[2] == "sessions" && parts[3] == "player" && parts[5] == "history" {
+		ctx.SetUserValue("playerName", parts[4])
+		sessionHandler.GetPlayerHistory(ctx)
+		return
+	}
+
+	// /api/sessions/{id}
+	if len(parts) == 4 && parts[1] == "api" && parts[2] == "sessions" {
+		ctx.SetUserValue("id", parts[3])
+		sessionHandler.GetSession(ctx)
+		return
+	}
+
+	serve404(ctx)
+}
+
+func handleSessionPostRoutes(ctx *fasthttp.RequestCtx, path string) {
+	parts := strings.Split(path, "/")
+
+	// /api/sessions/{id}/answer
+	if len(parts) == 5 && parts[1] == "api" && parts[2] == "sessions" && parts[4] == "answer" {
+		ctx.SetUserValue("id", parts[3])
+		sessionHandler.SubmitAnswer(ctx)
+		return
+	}
+
+	// /api/sessions/{id}/lifeline
+	if len(parts) == 5 && parts[1] == "api" && parts[2] == "sessions" && parts[4] == "lifeline" {
+		ctx.SetUserValue("id", parts[3])
+		sessionHandler.UseLifeline(ctx)
+		return
+	}
+
+	// /api/sessions/{id}/finish
+	if len(parts) == 5 && parts[1] == "api" && parts[2] == "sessions" && parts[4] == "finish" {
+		ctx.SetUserValue("id", parts[3])
+		sessionHandler.FinishSession(ctx)
+		return
+	}
+
+	serve404(ctx)
 }

@@ -26,14 +26,14 @@ func NewQuestionHandler(questionService *services.QuestionService) *QuestionHand
 func (h *QuestionHandler) respondWithJSON(ctx *fasthttp.RequestCtx, statusCode int, response interface{}) {
 	ctx.Response.Header.Set("Content-Type", "application/json")
 	ctx.SetStatusCode(statusCode)
-	
+
 	jsonData, err := json.Marshal(response)
 	if err != nil {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		ctx.SetBodyString(`{"success": false, "error": "Error al serializar respuesta"}`)
 		return
 	}
-	
+
 	ctx.SetBody(jsonData)
 }
 
