@@ -49,8 +49,11 @@ func (s *QuestionService) GetAllQuestions() ([]models.Question, error) {
 		return nil, fmt.Errorf("error obteniendo preguntas de Redis: %v", err)
 	}
 
+	log.Printf("📊 Total de preguntas en Redis: %d", len(redisQuestions))
+
 	// Convertir de redis.Question a models.Question
 	questions := make([]models.Question, len(redisQuestions))
+	questionIDs := make([]int, len(redisQuestions))
 	for i, rq := range redisQuestions {
 		questions[i] = models.Question{
 			ID:          rq.ID,
@@ -60,7 +63,10 @@ func (s *QuestionService) GetAllQuestions() ([]models.Question, error) {
 			Explanation: rq.Explanation,
 			Difficulty:  rq.Difficulty,
 		}
+		questionIDs[i] = rq.ID
 	}
+
+	log.Printf("📋 IDs de preguntas disponibles: %v", questionIDs)
 
 	return questions, nil
 }

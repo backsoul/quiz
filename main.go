@@ -76,7 +76,7 @@ func initServices() {
 
 	// Inicializar handlers
 	questionHandler = handlers.NewQuestionHandler(questionService)
-	sessionHandler = handlers.NewSessionHandler(sessionService, questionService)
+	sessionHandler = handlers.NewSessionHandler(sessionService, questionService, gameStateService, hub)
 	gameControlHandler = handlers.NewGameControlHandler(gameStateService, hub)
 }
 
@@ -169,6 +169,10 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		gameControlHandler.EndGame(ctx)
 	case path == "/api/game/state" && method == "GET":
 		gameControlHandler.GetGameState(ctx)
+	case path == "/api/game/next-question" && method == "POST":
+		gameControlHandler.NextQuestion(ctx)
+	case path == "/api/game/reveal-answer" && method == "POST":
+		gameControlHandler.RevealAnswer(ctx)
 
 	// WebSocket Route
 	case path == "/ws":

@@ -124,8 +124,8 @@ func (s *SessionService) AddAnswer(sessionID string, answer models.PlayerAnswer)
 		session.CurrentQuestion++
 		session.TotalPrize = answer.PrizeWon
 	} else {
-		// Juego terminado si es incorrecta
-		session.GameStatus = "finished"
+		// Marcar como eliminado pero manteniendo en modo espectador
+		session.GameStatus = "eliminated"
 	}
 
 	// Verificar si ganó el juego
@@ -201,12 +201,14 @@ func (s *SessionService) GetActiveSessions() ([]models.GameSession, error) {
 			continue
 		}
 
-		// Verificar si realmente está activa
-		if session.GameStatus == "active" {
+		// Incluir sesiones activas y eliminadas (espectadores)
+		if session.GameStatus == "active" || session.GameStatus == "eliminated" {
 			sessions = append(sessions, *session)
 		} else {
-			// Remover de sesiones activas si ya no está activa
-			s.removeFromActiveSessions(sessionID)
+			// Solo remover si realmente terminó el juego (finished)
+			if session.GameStatus == "finished" {
+				s.removeFromActiveSessions(sessionID)
+			}
 		}
 	}
 

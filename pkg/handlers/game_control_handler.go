@@ -56,7 +56,6 @@ func (gc *GameControlHandler) HandleWebSocket(ctx *fasthttp.RequestCtx) {
 				log.Printf("Error leyendo mensaje WebSocket: %v", err)
 				break
 			}
-			// Por ahora, solo escuchamos sin procesar mensajes del cliente
 		}
 	})
 
@@ -68,7 +67,6 @@ func (gc *GameControlHandler) HandleWebSocket(ctx *fasthttp.RequestCtx) {
 
 // StartGame inicia una nueva partida
 func (gc *GameControlHandler) StartGame(ctx *fasthttp.RequestCtx) {
-	// Verificar si ya hay una partida activa
 	gameState, err := gc.gameStateService.GetGameState()
 	if err != nil {
 		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error obteniendo estado del juego")
@@ -80,17 +78,14 @@ func (gc *GameControlHandler) StartGame(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// Iniciar nueva partida
 	err = gc.gameStateService.StartGame()
 	if err != nil {
 		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error iniciando partida")
 		return
 	}
 
-	// Notificar a todos los clientes conectados
 	gc.hub.BroadcastGameState(true, "Partida iniciada - Los jugadores pueden ingresar")
 
-	// Respuesta exitosa
 	gc.respondWithSuccess(ctx, map[string]interface{}{
 		"timestamp": time.Now().Format(time.RFC3339),
 	}, "Partida iniciada exitosamente")
@@ -100,7 +95,6 @@ func (gc *GameControlHandler) StartGame(ctx *fasthttp.RequestCtx) {
 
 // EndGame termina la partida actual
 func (gc *GameControlHandler) EndGame(ctx *fasthttp.RequestCtx) {
-	// Verificar si hay una partida activa
 	gameState, err := gc.gameStateService.GetGameState()
 	if err != nil {
 		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error obteniendo estado del juego")
@@ -112,17 +106,14 @@ func (gc *GameControlHandler) EndGame(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// Terminar partida
 	err = gc.gameStateService.EndGame()
 	if err != nil {
 		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error terminando partida")
 		return
 	}
 
-	// Notificar a todos los clientes conectados
 	gc.hub.BroadcastGameState(false, "Partida terminada - Los jugadores no pueden ingresar")
 
-	// Respuesta exitosa
 	gc.respondWithSuccess(ctx, map[string]interface{}{
 		"timestamp": time.Now().Format(time.RFC3339),
 	}, "Partida terminada exitosamente")
@@ -143,7 +134,58 @@ func (gc *GameControlHandler) GetGameState(ctx *fasthttp.RequestCtx) {
 	}, "Estado del juego obtenido exitosamente")
 }
 
-// Métodos de utilidad para respuestas HTTP
+// NextQuestion avanza a la siguiente pregunta para todos los jugadores
+func (gc *GameControlHandler) NextQuestion(ctx *fasthttp.RequestCtx) {
+	gameState, err := gc.gameStateService.GetGameState()
+	if err != nil {
+		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error obteniendo estado del juego")
+		return
+	}
+
+	if !gameState.IsActive {
+		gc.respondWithError(ctx, fasthttp.StatusBadRequest, "No hay partida activa")
+		return
+	}
+
+	// Enviar comando via WebSocket para que todos los jugadores avancen
+	gc.hub.BroadcastMessage("nextQuestion", map[string]interface{}{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"message":   "El administrador ha avanzado a la siguiente pregunta",
+	})
+
+	gc.respondWithSuccess(ctx, map[string]interface{}{
+		"timestamp": time.Now().Format(time.RFC3339),
+	}, "Comando enviado para avanzar a la siguiente pregunta")
+
+	log.Println("➡️ Administrador ha forzado el avance a la siguiente pregunta")
+}
+
+// RevealAnswer revela la respuesta correcta a todos los jugadores
+func (gc *GameControlHandler) RevealAnswer(ctx *fasthttp.RequestCtx) {
+	gameState, err := gc.gameStateService.GetGameState()
+	if err != nil {
+		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error obteniendo estado del juego")
+		return
+	}
+
+	if !gameState.IsActive {
+		gc.respondWithError(ctx, fasthttp.StatusBadRequest, "No hay partida activa")
+		return
+	}
+
+	// Enviar comando via WebSocket para revelar la respuesta
+	gc.hub.BroadcastMessage("revealAnswer", map[string]interface{}{
+		"timestamp": time.Now().Format(time.RFC3339),
+		"message":   "El administrador ha revelado la respuesta correcta",
+	})
+
+	gc.respondWithSuccess(ctx, map[string]interface{}{
+		"timestamp": time.Now().Format(time.RFC3339),
+	}, "Comando enviado para revelar la respuesta correcta")
+
+	log.Println("💡 Administrador ha revelado la respuesta correcta")
+}
+
 func (gc *GameControlHandler) respondWithError(ctx *fasthttp.RequestCtx, statusCode int, message string) {
 	response := models.APIResponse{
 		Success: false,

@@ -3,24 +3,30 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/backsoul/quiz/pkg/models"
 	"github.com/backsoul/quiz/pkg/services"
+	websocketHub "github.com/backsoul/quiz/pkg/websocket"
 	"github.com/valyala/fasthttp"
 )
 
 // SessionHandler maneja las peticiones HTTP para sesiones
 type SessionHandler struct {
-	sessionService  *services.SessionService
-	questionService *services.QuestionService
+	sessionService   *services.SessionService
+	questionService  *services.QuestionService
+	gameStateService *services.GameStateService
+	hub              *websocketHub.Hub
 }
 
 // NewSessionHandler crea una nueva instancia del handler de sesiones
-func NewSessionHandler(sessionService *services.SessionService, questionService *services.QuestionService) *SessionHandler {
+func NewSessionHandler(sessionService *services.SessionService, questionService *services.QuestionService, gameStateService *services.GameStateService, hub *websocketHub.Hub) *SessionHandler {
 	return &SessionHandler{
-		sessionService:  sessionService,
-		questionService: questionService,
+		sessionService:   sessionService,
+		questionService:  questionService,
+		gameStateService: gameStateService,
+		hub:              hub,
 	}
 }
 
@@ -37,11 +43,33 @@ func (h *SessionHandler) CreateSession(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	// 🚨 VALIDAR ESTADO DEL JUEGO ANTES DE CREAR SESIÓN
+	gameState, err := h.gameStateService.GetGameState()
+	if err != nil {
+		h.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error verificando estado del juego")
+		return
+	}
+
+	if !gameState.IsActive {
+		h.respondWithError(ctx, fasthttp.StatusForbidden, "El juego no está activo. Espera a que el administrador inicie la partida.")
+		return
+	}
+
 	session, err := h.sessionService.CreateSession(request.PlayerName)
 	if err != nil {
 		h.respondWithError(ctx, fasthttp.StatusInternalServerError, fmt.Sprintf("Error creando sesión: %v", err))
 		return
 	}
+
+	// Notificar al admin sobre el nuevo jugador
+	h.hub.BroadcastMessage("playerJoined", map[string]interface{}{
+		"playerName": request.PlayerName,
+		"sessionId":  session.ID,
+		"timestamp":  time.Now().Format(time.RFC3339),
+		"message":    fmt.Sprintf("%s se unió al juego", request.PlayerName),
+	})
+
+	log.Printf("👤 Nuevo jugador: %s (ID: %s)", request.PlayerName, session.ID)
 
 	responseData := models.SessionResponse{
 		Session: session,
@@ -133,6 +161,13 @@ func (h *SessionHandler) SubmitAnswer(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	// Validar que el ID de pregunta sea válido
+	if answerRequest.QuestionID <= 0 {
+		log.Printf("❌ ID de pregunta inválido recibido: %d", answerRequest.QuestionID)
+		h.respondWithError(ctx, fasthttp.StatusBadRequest, "ID de pregunta inválido")
+		return
+	}
+
 	// Obtener la sesión
 	session, err := h.sessionService.GetSession(sessionID)
 	if err != nil {
@@ -141,9 +176,11 @@ func (h *SessionHandler) SubmitAnswer(ctx *fasthttp.RequestCtx) {
 	}
 
 	// Obtener la pregunta para verificar la respuesta
+	log.Printf("🔍 Buscando pregunta con ID: %d", answerRequest.QuestionID)
 	question, err := h.questionService.GetQuestion(answerRequest.QuestionID)
 	if err != nil {
-		h.respondWithError(ctx, fasthttp.StatusNotFound, "Pregunta no encontrada")
+		log.Printf("❌ Error obteniendo pregunta %d: %v", answerRequest.QuestionID, err)
+		h.respondWithError(ctx, fasthttp.StatusNotFound, fmt.Sprintf("Pregunta no encontrada (ID: %d)", answerRequest.QuestionID))
 		return
 	}
 
@@ -174,6 +211,30 @@ func (h *SessionHandler) SubmitAnswer(ctx *fasthttp.RequestCtx) {
 	// Obtener la sesión actualizada
 	updatedSession, _ := h.sessionService.GetSession(sessionID)
 
+	// Notificar al admin sobre la respuesta
+	resultIcon := "✅"
+	resultText := "Correcto"
+	if !isCorrect {
+		resultIcon = "❌"
+		resultText = "Incorrecto"
+	}
+
+	h.hub.BroadcastMessage("answerSubmitted", map[string]interface{}{
+		"playerName":     session.PlayerName,
+		"sessionId":      sessionID,
+		"questionNumber": session.CurrentQuestion,
+		"selectedOption": answerRequest.SelectedOption,
+		"correctOption":  question.Correct,
+		"isCorrect":      isCorrect,
+		"prizeWon":       prizeWon,
+		"timeToAnswer":   answerRequest.TimeToAnswer,
+		"timestamp":      time.Now().Format(time.RFC3339),
+		"message":        fmt.Sprintf("%s respondió %s - %s", session.PlayerName, answerRequest.SelectedOption, resultText),
+		"icon":           resultIcon,
+	})
+
+	log.Printf("📝 %s respondió %s en pregunta %d: %s", session.PlayerName, answerRequest.SelectedOption, session.CurrentQuestion, resultText)
+
 	responseData := models.SessionResponse{
 		Session: updatedSession,
 	}
@@ -182,7 +243,7 @@ func (h *SessionHandler) SubmitAnswer(ctx *fasthttp.RequestCtx) {
 	if isCorrect {
 		message = fmt.Sprintf("¡Correcto! Has ganado $%d", prizeWon)
 	} else {
-		message = "Respuesta incorrecta. Juego terminado."
+		message = "Respuesta incorrecta. Ahora estás en modo espectador."
 	}
 
 	h.respondWithSuccess(ctx, responseData, message)
@@ -208,6 +269,18 @@ func (h *SessionHandler) UseLifeline(ctx *fasthttp.RequestCtx) {
 
 	// Obtener la sesión actualizada
 	session, _ := h.sessionService.GetSession(sessionID)
+
+	// Notificar al admin sobre el uso del comodín
+	h.hub.BroadcastMessage("lifelineUsed", map[string]interface{}{
+		"playerName":      session.PlayerName,
+		"sessionId":       sessionID,
+		"lifelineType":    lifelineRequest.Type,
+		"currentQuestion": session.CurrentQuestion,
+		"timestamp":       time.Now().Format(time.RFC3339),
+		"message":         fmt.Sprintf("%s usó el comodín: %s", session.PlayerName, lifelineRequest.Type),
+	})
+
+	log.Printf("🎯 %s usó comodín %s en pregunta %d", session.PlayerName, lifelineRequest.Type, session.CurrentQuestion)
 
 	responseData := models.SessionResponse{
 		Session: session,
