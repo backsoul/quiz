@@ -51,8 +51,8 @@
 
       .stats-overview {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
         margin-bottom: 40px;
       }
 
@@ -323,6 +323,91 @@
         font-style: italic;
       }
 
+      .current-question-panel {
+        background: rgba(0, 0, 0, 0.7);
+        border: 2px solid #4caf50;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        overflow: hidden;
+      }
+
+      .current-question-content {
+        padding: 20px;
+      }
+
+      .no-current-question {
+        text-align: center;
+        color: #888;
+        font-style: italic;
+        padding: 20px;
+      }
+
+      .question-display {
+        background: rgba(76, 175, 80, 0.1);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(76, 175, 80, 0.3);
+      }
+
+      .question-title {
+        font-size: 1.2rem;
+        color: #4caf50;
+        font-weight: bold;
+      }
+
+      .question-id {
+        color: #888;
+        font-size: 0.9rem;
+      }
+
+      .question-text {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 20px;
+        color: #fff;
+      }
+
+      .question-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .option-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 10px 15px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .option-item.correct {
+        background: rgba(76, 175, 80, 0.2);
+        border-color: #4caf50;
+        color: #4caf50;
+        font-weight: bold;
+      }
+
+      .correct-answer-display {
+        text-align: center;
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid #4caf50;
+        border-radius: 8px;
+        padding: 15px;
+        color: #4caf50;
+        font-weight: bold;
+        font-size: 1.1rem;
+      }
+
       .notifications-panel {
         background: rgba(0, 0, 0, 0.7);
         border: 2px solid #ffd700;
@@ -453,6 +538,14 @@
           <div class="stat-number" id="eliminatedPlayers">0</div>
           <div class="stat-label">Eliminados</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-number" id="playersAnswered">0</div>
+          <div class="stat-label">Han Respondido</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="playersPending">0</div>
+          <div class="stat-label">Pendientes</div>
+        </div>
       </div>
 
       <div class="game-status" id="gameStatus">
@@ -494,6 +587,13 @@
         <button class="refresh-btn" onclick="refreshData()">
           🔄 Actualizar Datos
         </button>
+      </div>
+
+      <div class="current-question-panel">
+        <div class="table-header">📋 Pregunta Actual</div>
+        <div class="current-question-content" id="currentQuestionContent">
+          <div class="no-current-question">No hay pregunta activa</div>
+        </div>
       </div>
 
       <div class="notifications-panel">
@@ -688,6 +788,15 @@
         }
       }
 
+      // Estado de respuestas de los jugadores
+      let playersStatus = {
+        totalPlayers: 0,
+        playersAnswered: 0,
+        playersPending: 0,
+        currentQuestion: 0,
+        players: [],
+      };
+
       function updateStats() {
         const total = playersData.length;
         const active = playersData.filter((p) => p.status === "playing").length;
@@ -698,6 +807,31 @@
         document.getElementById("totalPlayers").textContent = total;
         document.getElementById("activePlayers").textContent = active;
         document.getElementById("eliminatedPlayers").textContent = eliminated;
+
+        // Actualizar estadísticas de respuestas
+        document.getElementById("playersAnswered").textContent =
+          playersStatus.playersAnswered;
+        document.getElementById("playersPending").textContent =
+          playersStatus.playersPending;
+      }
+
+      async function loadPlayersStatus() {
+        try {
+          const response = await fetch("/api/sessions/status");
+          const data = await response.json();
+
+          if (data.success) {
+            playersStatus = data.data;
+            console.log("✅ Estado de jugadores cargado:", playersStatus);
+          } else {
+            console.error("❌ Error cargando estado de jugadores:", data.error);
+          }
+        } catch (error) {
+          console.error(
+            "❌ Error de conexión para estado de jugadores:",
+            error
+          );
+        }
       }
 
       function getAnswerStatusText(status) {
@@ -807,6 +941,107 @@
         tableContent.innerHTML = playersHTML;
       }
 
+      async function loadCurrentQuestion() {
+        try {
+          const response = await fetch("/api/admin/current-question");
+          const data = await response.json();
+
+          if (data.success) {
+            renderCurrentQuestion(data.data);
+          } else {
+            console.error("❌ Error cargando pregunta actual:", data.error);
+            renderCurrentQuestion({
+              hasActivePlayers: false,
+              message: "Error cargando pregunta",
+            });
+          }
+        } catch (error) {
+          console.error("❌ Error de red cargando pregunta actual:", error);
+          renderCurrentQuestion({
+            hasActivePlayers: false,
+            message: "Error de conexión",
+          });
+        }
+      }
+
+      function renderCurrentQuestion(questionData) {
+        const contentDiv = document.getElementById("currentQuestionContent");
+
+        if (!questionData.hasActivePlayers) {
+          contentDiv.innerHTML = `
+            <div class="no-current-question">
+              ${questionData.message || "No hay jugadores activos"}
+            </div>
+          `;
+          return;
+        }
+
+        const question = questionData.currentQuestion;
+        const stats = questionData.questionStats;
+
+        if (!question) {
+          contentDiv.innerHTML = `
+            <div class="no-current-question">
+              No se pudo cargar la pregunta actual
+            </div>
+          `;
+          return;
+        }
+
+        contentDiv.innerHTML = `
+          <div class="question-display">
+            <div class="question-header">
+              <div class="question-title">Pregunta ${stats.questionNumber}</div>
+              <div class="question-id">ID: ${question.id}</div>
+            </div>
+            
+            <div class="question-text">${question.question}</div>
+            
+            <div class="question-options">
+              <div class="option-item ${
+                question.correctAnswer === "A" ? "correct" : ""
+              }">
+                A) ${question.options?.A || "N/A"}
+              </div>
+              <div class="option-item ${
+                question.correctAnswer === "B" ? "correct" : ""
+              }">
+                B) ${question.options?.B || "N/A"}
+              </div>
+              <div class="option-item ${
+                question.correctAnswer === "C" ? "correct" : ""
+              }">
+                C) ${question.options?.C || "N/A"}
+              </div>
+              <div class="option-item ${
+                question.correctAnswer === "D" ? "correct" : ""
+              }">
+                D) ${question.options?.D || "N/A"}
+              </div>
+            </div>
+            
+            <div class="correct-answer-display">
+              ✅ Respuesta Correcta: ${question.correctAnswer}) ${
+          question.options?.[question.correctAnswer] || "N/A"
+        }
+            </div>
+            
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(76, 175, 80, 0.3); font-size: 0.9rem; color: #ccc;">
+              <strong>📊 Estadísticas:</strong><br>
+              • ${stats.playersOnThis} de ${
+          stats.totalActive
+        } jugadores activos en esta pregunta<br>
+              • ${
+                stats.totalEliminated
+              } jugadores eliminados (modo espectador)<br>
+              • Dificultad: ${question.difficulty}/5 | Premio: ${getPrizeAmount(
+          stats.questionNumber
+        )}
+            </div>
+          </div>
+        `;
+      }
+
       async function refreshData() {
         // Cargar datos reales desde la API
         const refreshBtn = document.querySelector(".refresh-btn");
@@ -815,6 +1050,8 @@
 
         try {
           await loadSessionsData();
+          await loadCurrentQuestion(); // Cargar pregunta actual
+          await loadPlayersStatus(); // Cargar estado de respuestas
           updateStats();
           renderPlayersTable();
 
@@ -861,6 +1098,8 @@
 
         // Cargar datos iniciales
         await loadSessionsData();
+        await loadCurrentQuestion(); // Cargar pregunta actual
+        await loadPlayersStatus(); // Cargar estado de respuestas
         updateStats();
         renderPlayersTable();
 
@@ -977,11 +1216,22 @@
       }
 
       async function nextQuestion() {
-        const confirmNext = confirm(
-          "¿Estás seguro de que quieres avanzar a la siguiente pregunta? Esto afectará a todos los jugadores activos."
-        );
+        // Verificar si todos los jugadores han respondido
+        await loadPlayersStatus();
 
-        if (!confirmNext) return;
+        if (playersStatus.playersPending > 0) {
+          const confirmNext = confirm(
+            `⚠️ Aún hay ${playersStatus.playersPending} jugadores que no han respondido la pregunta actual.\n\n¿Estás seguro de que quieres avanzar a la siguiente pregunta?`
+          );
+
+          if (!confirmNext) return;
+        } else {
+          const confirmNext = confirm(
+            "✅ Todos los jugadores han respondido.\n\n¿Quieres avanzar a la siguiente pregunta?"
+          );
+
+          if (!confirmNext) return;
+        }
 
         try {
           const response = await fetch("/api/game/next-question", {
@@ -995,7 +1245,12 @@
 
           if (data.success) {
             console.log("✅ Avanzado a la siguiente pregunta:", data.message);
-            // El WebSocket se encargará de actualizar la UI
+            // Actualizar inmediatamente la pregunta actual en el admin
+            setTimeout(async () => {
+              await loadCurrentQuestion();
+              await loadPlayersStatus();
+              updateStats();
+            }, 1000);
           } else {
             alert("❌ Error avanzando pregunta: " + data.error);
           }

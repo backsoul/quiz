@@ -75,9 +75,9 @@ func initServices() {
 	go hub.Run()
 
 	// Inicializar handlers
-	questionHandler = handlers.NewQuestionHandler(questionService)
+	questionHandler = handlers.NewQuestionHandler(questionService, sessionService)
 	sessionHandler = handlers.NewSessionHandler(sessionService, questionService, gameStateService, hub)
-	gameControlHandler = handlers.NewGameControlHandler(gameStateService, hub)
+	gameControlHandler = handlers.NewGameControlHandler(gameStateService, sessionService, hub)
 }
 
 func loadInitialQuestions() {
@@ -159,6 +159,8 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		sessionHandler.GetActiveSessions(ctx)
 	case path == "/api/sessions/players" && method == "GET":
 		sessionHandler.GetPlayerNames(ctx)
+	case path == "/api/sessions/status" && method == "GET":
+		sessionHandler.GetPlayersStatus(ctx)
 	case path == "/api/leaderboard" && method == "GET":
 		sessionHandler.GetLeaderboard(ctx)
 
@@ -173,6 +175,8 @@ func requestHandler(ctx *fasthttp.RequestCtx) {
 		gameControlHandler.NextQuestion(ctx)
 	case path == "/api/game/reveal-answer" && method == "POST":
 		gameControlHandler.RevealAnswer(ctx)
+	case path == "/api/admin/current-question" && method == "GET":
+		questionHandler.GetCurrentQuestionInfo(ctx)
 
 	// WebSocket Route
 	case path == "/ws":

@@ -13,12 +13,14 @@ import (
 // QuestionHandler maneja las peticiones HTTP para preguntas
 type QuestionHandler struct {
 	questionService *services.QuestionService
+	sessionService  *services.SessionService
 }
 
 // NewQuestionHandler crea una nueva instancia del handler
-func NewQuestionHandler(questionService *services.QuestionService) *QuestionHandler {
+func NewQuestionHandler(questionService *services.QuestionService, sessionService *services.SessionService) *QuestionHandler {
 	return &QuestionHandler{
 		questionService: questionService,
+		sessionService:  sessionService,
 	}
 }
 
@@ -214,6 +216,100 @@ func (h *QuestionHandler) ReloadQuestions(ctx *fasthttp.RequestCtx) {
 	}
 
 	h.respondWithSuccess(ctx, nil, "Preguntas recargadas exitosamente")
+}
+
+// GetCurrentQuestionInfo maneja GET /api/admin/current-question
+func (h *QuestionHandler) GetCurrentQuestionInfo(ctx *fasthttp.RequestCtx) {
+	// Obtener sesiones activas para determinar qué preguntas están en uso
+	sessions, sessionErr := h.sessionService.GetActiveSessions()
+	if sessionErr != nil {
+		h.respondWithError(ctx, fasthttp.StatusInternalServerError, fmt.Sprintf("Error obteniendo sesiones: %v", sessionErr))
+		return
+	}
+
+	if len(sessions) == 0 {
+		h.respondWithSuccess(ctx, map[string]interface{}{
+			"hasActivePlayers": false,
+			"message":          "No hay jugadores activos",
+		}, "No hay jugadores activos")
+		return
+	}
+
+	// Encontrar la pregunta más común entre jugadores activos
+	questionStats := make(map[int][]models.GameSession)
+	questionIDStats := make(map[int][]models.GameSession)
+	activePlayers := []models.GameSession{}
+
+	for _, session := range sessions {
+		if session.GameStatus == "active" {
+			activePlayers = append(activePlayers, session)
+			questionStats[session.CurrentQuestion] = append(questionStats[session.CurrentQuestion], session)
+			if session.CurrentQuestionID > 0 {
+				questionIDStats[session.CurrentQuestionID] = append(questionIDStats[session.CurrentQuestionID], session)
+			}
+		}
+	}
+
+	if len(activePlayers) == 0 {
+		// Solo espectadores, mostrar info general
+		h.respondWithSuccess(ctx, map[string]interface{}{
+			"hasActivePlayers": false,
+			"eliminatedCount":  len(sessions),
+			"message":          "Solo hay jugadores eliminados (espectadores)",
+		}, "Solo espectadores activos")
+		return
+	}
+
+	// Encontrar la pregunta más común por ID
+	var mostCommonQuestionID int
+	var mostCommonQuestionNumber int
+	var maxCount int
+	for questionID, sessionsOnQuestion := range questionIDStats {
+		if len(sessionsOnQuestion) > maxCount {
+			maxCount = len(sessionsOnQuestion)
+			mostCommonQuestionID = questionID
+			// Obtener el número de pregunta del primer jugador en esta pregunta
+			if len(sessionsOnQuestion) > 0 {
+				mostCommonQuestionNumber = sessionsOnQuestion[0].CurrentQuestion
+			}
+		}
+	}
+
+	// Si no hay questionID válido, usar una pregunta por defecto
+	var question *models.Question
+	if mostCommonQuestionID > 0 {
+		questionResult, questionErr := h.questionService.GetQuestion(mostCommonQuestionID)
+		if questionErr != nil {
+			h.respondWithError(ctx, fasthttp.StatusNotFound, fmt.Sprintf("Error obteniendo pregunta %d: %v", mostCommonQuestionID, questionErr))
+			return
+		}
+		question = questionResult
+	} else {
+		// Fallback: obtener la primera pregunta disponible
+		questions, questionsErr := h.questionService.GetAllQuestions()
+		if questionsErr != nil || len(questions) == 0 {
+			h.respondWithError(ctx, fasthttp.StatusInternalServerError, "No hay preguntas disponibles")
+			return
+		}
+		question = &questions[0]
+		mostCommonQuestionNumber = 1
+	}
+
+	// Preparar respuesta
+	responseData := map[string]interface{}{
+		"hasActivePlayers": true,
+		"currentQuestion":  question,
+		"questionStats": map[string]interface{}{
+			"questionNumber":  mostCommonQuestionNumber,
+			"playersOnThis":   maxCount,
+			"totalActive":     len(activePlayers),
+			"totalEliminated": len(sessions) - len(activePlayers),
+		},
+		"activePlayers":     activePlayers,
+		"questionBreakdown": questionStats,
+	}
+
+	h.respondWithSuccess(ctx, responseData, fmt.Sprintf("Pregunta %d activa para %d jugadores", mostCommonQuestionNumber, maxCount))
 }
 
 // HealthCheck maneja GET /api/health

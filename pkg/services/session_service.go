@@ -390,3 +390,118 @@ func (s *SessionService) getRecentFinishedSessions() ([]models.GameSession, erro
 
 	return finishedSessions, nil
 }
+
+// ClearAllSessions elimina todas las sesiones y datos relacionados
+func (s *SessionService) ClearAllSessions() error {
+	log.Println("🧹 Limpiando todas las sesiones y datos de la partida...")
+
+	// Obtener todas las sesiones activas para limpiarlas individualmente
+	activeSessions, err := s.GetActiveSessions()
+	if err != nil {
+		log.Printf("⚠️ Error obteniendo sesiones activas: %v", err)
+	}
+
+	// Limpiar sesiones individuales
+	for _, session := range activeSessions {
+		// Eliminar la sesión individual
+		sessionKey := fmt.Sprintf("quiz:session:%s", session.ID)
+		err := s.redisClient.Delete(sessionKey)
+		if err != nil {
+			log.Printf("⚠️ Error eliminando sesión %s: %v", session.ID, err)
+		}
+
+		// Eliminar historial del jugador
+		playerSessionsKey := fmt.Sprintf("quiz:player:%s:sessions", session.PlayerName)
+		err = s.redisClient.Delete(playerSessionsKey)
+		if err != nil {
+			log.Printf("⚠️ Error eliminando historial del jugador %s: %v", session.PlayerName, err)
+		}
+	}
+
+	// Limpiar lista de sesiones activas
+	err = s.redisClient.Delete("quiz:active_sessions")
+	if err != nil {
+		log.Printf("⚠️ Error limpiando sesiones activas: %v", err)
+	}
+
+	// Limpiar lista de sesiones terminadas recientes
+	err = s.redisClient.Delete("quiz:finished_sessions")
+	if err != nil {
+		log.Printf("⚠️ Error limpiando sesiones terminadas: %v", err)
+	}
+
+	// Limpiar lista de nombres de jugadores
+	err = s.redisClient.Delete("quiz:player_names")
+	if err != nil {
+		log.Printf("⚠️ Error limpiando nombres de jugadores: %v", err)
+	}
+
+	log.Printf("✅ Se limpiaron %d sesiones y todos los datos relacionados", len(activeSessions))
+	return nil
+}
+
+// GetPlayersStatus obtiene el estado de respuestas de todos los jugadores
+func (s *SessionService) GetPlayersStatus() (*models.PlayersStatusResponse, error) {
+	// Obtener todas las sesiones activas
+	activeSessions, err := s.GetActiveSessions()
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo sesiones activas: %v", err)
+	}
+
+	// Crear estructura de respuesta
+	status := &models.PlayersStatusResponse{
+		TotalPlayers:    len(activeSessions),
+		PlayersAnswered: 0,
+		PlayersPending:  0,
+		CurrentQuestion: 0,
+		Players:         make([]models.PlayerStatus, 0),
+	}
+
+	// Si no hay jugadores, retornar estado vacío
+	if len(activeSessions) == 0 {
+		return status, nil
+	}
+
+	// Determinar la pregunta actual más común
+	questionCounts := make(map[int]int)
+	for _, session := range activeSessions {
+		questionCounts[session.CurrentQuestion]++
+	}
+
+	// Encontrar la pregunta más común
+	maxCount := 0
+	for question, count := range questionCounts {
+		if count > maxCount {
+			maxCount = count
+			status.CurrentQuestion = question
+		}
+	}
+
+	// Analizar cada jugador
+	for _, session := range activeSessions {
+		playerStatus := models.PlayerStatus{
+			PlayerName:      session.PlayerName,
+			CurrentQuestion: session.CurrentQuestion,
+			GameStatus:      session.GameStatus,
+			HasAnswered:     false,
+			LastActivity:    session.LastActivity,
+		}
+
+		// Verificar si el jugador ha respondido la pregunta actual
+		if len(session.AnswersGiven) > 0 {
+			lastAnswer := session.AnswersGiven[len(session.AnswersGiven)-1]
+			if lastAnswer.QuestionNumber == status.CurrentQuestion {
+				playerStatus.HasAnswered = true
+				status.PlayersAnswered++
+			} else {
+				status.PlayersPending++
+			}
+		} else {
+			status.PlayersPending++
+		}
+
+		status.Players = append(status.Players, playerStatus)
+	}
+
+	return status, nil
+}

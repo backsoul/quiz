@@ -70,3 +70,21 @@ type LeaderboardResponse struct {
 	TotalPlayers  int                `json:"totalPlayers"`
 	ActivePlayers int                `json:"activePlayers"`
 }
+
+// PlayerStatus estado individual de un jugador
+type PlayerStatus struct {
+	PlayerName      string    `json:"playerName"`
+	CurrentQuestion int       `json:"currentQuestion"`
+	GameStatus      string    `json:"gameStatus"`
+	HasAnswered     bool      `json:"hasAnswered"`
+	LastActivity    time.Time `json:"lastActivity"`
+}
+
+// PlayersStatusResponse respuesta del estado de todos los jugadores
+type PlayersStatusResponse struct {
+	TotalPlayers    int            `json:"totalPlayers"`
+	PlayersAnswered int            `json:"playersAnswered"`
+	PlayersPending  int            `json:"playersPending"`
+	CurrentQuestion int            `json:"currentQuestion"`
+	Players         []PlayerStatus `json:"players"`
+}

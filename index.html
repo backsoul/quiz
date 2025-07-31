@@ -443,12 +443,30 @@
         margin: 2px 0;
         border-radius: 5px;
         font-size: 0.9rem;
+        transition: all 0.3s ease;
       }
 
       .prize-item.current {
         background: #ffd700;
         color: #000;
         font-weight: bold;
+        animation: prize-pulse 2s infinite;
+      }
+
+      .prize-item.won {
+        background: rgba(0, 255, 0, 0.2);
+        color: #00ff00;
+        border: 1px solid #00ff00;
+      }
+
+      @keyframes prize-pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
       }
 
       /* Tabla de jugadores */
@@ -570,6 +588,167 @@
 
         .name-input input {
           min-width: 250px;
+        }
+      }
+
+      /* Diálogos animados */
+      .dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .dialog-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .dialog-box {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 3px solid #ffd700;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        transform: scale(0.7) translateY(-50px);
+        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+
+      .dialog-overlay.show .dialog-box {
+        transform: scale(1) translateY(0);
+      }
+
+      .dialog-icon {
+        font-size: 3rem;
+        margin-bottom: 20px;
+        display: block;
+      }
+
+      .dialog-title {
+        font-size: 1.5rem;
+        color: #ffd700;
+        margin-bottom: 15px;
+        font-weight: bold;
+      }
+
+      .dialog-message {
+        font-size: 1.1rem;
+        color: #fff;
+        margin-bottom: 25px;
+        line-height: 1.5;
+      }
+
+      .dialog-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+      }
+
+      .dialog-btn {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .dialog-btn.primary {
+        background: linear-gradient(45deg, #ffd700, #ffed4e);
+        color: #000;
+      }
+
+      .dialog-btn.primary:hover {
+        background: linear-gradient(45deg, #ffed4e, #ffd700);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+      }
+
+      .dialog-btn.secondary {
+        background: transparent;
+        color: #ffd700;
+        border: 2px solid #ffd700;
+      }
+
+      .dialog-btn.secondary:hover {
+        background: #ffd700;
+        color: #000;
+      }
+
+      /* Animaciones de transición de preguntas */
+      .question-container.transitioning {
+        animation: questionTransition 1.2s ease-in-out;
+      }
+
+      @keyframes questionTransition {
+        0% {
+          transform: translateX(0) scale(1);
+          opacity: 1;
+        }
+        25% {
+          transform: translateX(-50px) scale(0.95);
+          opacity: 0.7;
+        }
+        50% {
+          transform: translateX(-100%) scale(0.9);
+          opacity: 0;
+        }
+        51% {
+          transform: translateX(100%) scale(0.9);
+          opacity: 0;
+        }
+        75% {
+          transform: translateX(50px) scale(0.95);
+          opacity: 0.7;
+        }
+        100% {
+          transform: translateX(0) scale(1);
+          opacity: 1;
+        }
+      }
+
+      .question-appear {
+        animation: questionAppear 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      }
+
+      @keyframes questionAppear {
+        0% {
+          transform: translateY(50px) scale(0.8);
+          opacity: 0;
+        }
+        100% {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+
+      .option.option-reveal {
+        animation: optionReveal 0.6s ease forwards;
+      }
+
+      @keyframes optionReveal {
+        0% {
+          transform: translateX(-30px);
+          opacity: 0;
+        }
+        100% {
+          transform: translateX(0);
+          opacity: 1;
         }
       }
     </style>
@@ -715,6 +894,20 @@
       </div>
     </div>
 
+    <!-- Sistema de diálogos animados -->
+    <div class="dialog-overlay" id="dialogOverlay">
+      <div class="dialog-box" id="dialogBox">
+        <span class="dialog-icon" id="dialogIcon">ℹ️</span>
+        <div class="dialog-title" id="dialogTitle">Título</div>
+        <div class="dialog-message" id="dialogMessage">Mensaje</div>
+        <div class="dialog-buttons" id="dialogButtons">
+          <button class="dialog-btn primary" id="dialogPrimaryBtn">
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabla de jugadores -->
     <div class="players-table" id="playersTable" style="display: none">
       <div class="players-title">JUGADORES</div>
@@ -778,21 +971,7 @@
 
     <!-- Escalera de premios -->
     <div class="prize-ladder" id="prizeLadder" style="display: none">
-      <div class="prize-item">$1,000,000</div>
-      <div class="prize-item">$500,000</div>
-      <div class="prize-item">$250,000</div>
-      <div class="prize-item">$125,000</div>
-      <div class="prize-item">$64,000</div>
-      <div class="prize-item">$32,000</div>
-      <div class="prize-item">$16,000</div>
-      <div class="prize-item">$8,000</div>
-      <div class="prize-item">$4,000</div>
-      <div class="prize-item">$2,000</div>
-      <div class="prize-item">$1,000</div>
-      <div class="prize-item">$500</div>
-      <div class="prize-item">$300</div>
-      <div class="prize-item">$200</div>
-      <div class="prize-item current">$100</div>
+      <!-- Los premios se generarán dinámicamente -->
     </div>
 
     <script>
@@ -803,6 +982,8 @@
         currentQuestionId: null,
         correctAnswer: "B", // París es la respuesta correcta
         isSpectator: false, // Flag para modo espectador
+        waitingForResult: false, // Flag para indicar que estamos esperando que el admin revele el resultado
+        selectedOption: null, // Opción seleccionada por el jugador
         lifelinesUsed: {
           fiftyFifty: false,
           audience: false,
@@ -816,6 +997,144 @@
         questions: [],
         currentQuestionIndex: 0,
       };
+
+      // Sistema de diálogos animados
+      function showDialog(options = {}) {
+        const {
+          icon = "ℹ️",
+          title = "Información",
+          message = "",
+          type = "info", // info, success, warning, error
+          buttons = [{ text: "Aceptar", action: null, primary: true }],
+          autoClose = false,
+          duration = 3000,
+        } = options;
+
+        const overlay = document.getElementById("dialogOverlay");
+        const dialogIcon = document.getElementById("dialogIcon");
+        const dialogTitle = document.getElementById("dialogTitle");
+        const dialogMessage = document.getElementById("dialogMessage");
+        const dialogButtons = document.getElementById("dialogButtons");
+
+        // Configurar icono según el tipo
+        const icons = {
+          info: "ℹ️",
+          success: "✅",
+          warning: "⚠️",
+          error: "❌",
+          question: "❓",
+          celebration: "🎉",
+        };
+
+        dialogIcon.textContent = icon || icons[type] || icons.info;
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+
+        // Limpiar botones anteriores
+        dialogButtons.innerHTML = "";
+
+        // Crear botones
+        buttons.forEach((button, index) => {
+          const btn = document.createElement("button");
+          btn.className = `dialog-btn ${
+            button.primary ? "primary" : "secondary"
+          }`;
+          btn.textContent = button.text;
+          btn.onclick = () => {
+            if (button.action) button.action();
+            hideDialog();
+          };
+          dialogButtons.appendChild(btn);
+        });
+
+        // Mostrar diálogo
+        overlay.classList.add("show");
+
+        // Auto cerrar si se especifica
+        if (autoClose) {
+          setTimeout(() => {
+            hideDialog();
+          }, duration);
+        }
+
+        return overlay;
+      }
+
+      function hideDialog() {
+        const overlay = document.getElementById("dialogOverlay");
+        overlay.classList.remove("show");
+      }
+
+      // Funciones de conveniencia para diferentes tipos de diálogo
+      function showInfo(title, message, autoClose = false) {
+        return showDialog({
+          type: "info",
+          title,
+          message,
+          autoClose,
+          buttons: [{ text: "Entendido", primary: true }],
+        });
+      }
+
+      function showSuccess(title, message, autoClose = true) {
+        return showDialog({
+          type: "success",
+          title,
+          message,
+          autoClose,
+          duration: 2500,
+        });
+      }
+
+      function showError(title, message) {
+        return showDialog({
+          type: "error",
+          title,
+          message,
+          buttons: [{ text: "Entendido", primary: true }],
+        });
+      }
+
+      function showConfirm(title, message, onConfirm, onCancel = null) {
+        return showDialog({
+          type: "question",
+          title,
+          message,
+          buttons: [
+            { text: "Confirmar", action: onConfirm, primary: true },
+            { text: "Cancelar", action: onCancel, primary: false },
+          ],
+        });
+      }
+
+      // Animaciones de transición de preguntas
+      function animateQuestionTransition(callback) {
+        const questionContainer = document.querySelector(".question-container");
+        if (!questionContainer) return;
+
+        questionContainer.classList.add("transitioning");
+
+        setTimeout(() => {
+          if (callback) callback();
+          questionContainer.classList.remove("transitioning");
+          questionContainer.classList.add("question-appear");
+
+          // Animar opciones una por una
+          const options = document.querySelectorAll(".option");
+          options.forEach((option, index) => {
+            setTimeout(() => {
+              option.classList.add("option-reveal");
+            }, index * 150);
+          });
+
+          setTimeout(() => {
+            questionContainer.classList.remove("question-appear");
+            options.forEach((option) => {
+              option.classList.remove("option-reveal");
+            });
+          }, 1000);
+        }, 600);
+      }
 
       // Cargar nombre guardado al iniciar
       window.onload = function () {
@@ -831,7 +1150,7 @@
         loadQuestions();
 
         // Cargar tabla de posiciones inicial
-        loadLeaderboard();
+        loadPlayersTable();
 
         // Verificar estado inicial del juego
         checkInitialGameState();
@@ -912,28 +1231,25 @@
         }
       }
 
-      async function loadLeaderboard() {
+      async function loadPlayersTable() {
         try {
-          const response = await fetch("/api/leaderboard");
+          const response = await fetch("/api/sessions/active");
           const data = await response.json();
 
-          if (data.success && data.data.leaderboard) {
-            updatePlayersTable(data.data.leaderboard);
+          if (data.success && data.data.sessions) {
+            updatePlayersTable(data.data.sessions);
             console.log(
-              `✅ Tabla de posiciones cargada con ${data.data.leaderboard.length} jugadores`
+              `✅ Tabla de jugadores activos cargada con ${data.data.sessions.length} jugadores`
             );
           } else {
-            console.error("❌ Error cargando tabla de posiciones:", data.error);
+            console.error("❌ Error cargando tabla de jugadores:", data.error);
           }
         } catch (error) {
-          console.error(
-            "❌ Error de conexión para tabla de posiciones:",
-            error
-          );
+          console.error("❌ Error de conexión para tabla de jugadores:", error);
         }
       }
 
-      function updatePlayersTable(leaderboard) {
+      function updatePlayersTable(activeSessions) {
         const playersTable = document.getElementById("playersTable");
 
         // Limpiar contenido actual excepto el título
@@ -944,44 +1260,85 @@
         } else {
           const newTitle = document.createElement("div");
           newTitle.className = "players-title";
-          newTitle.textContent = "JUGADORES";
+          newTitle.textContent = "JUGADORES ACTIVOS";
           playersTable.appendChild(newTitle);
         }
 
-        // Agregar jugadores de la tabla de posiciones
-        leaderboard.slice(0, 8).forEach((player, index) => {
+        // Generar avatares únicos para cada jugador
+        const avatars = [
+          "🎯",
+          "⭐",
+          "🔥",
+          "💎",
+          "🌟",
+          "🎪",
+          "🚀",
+          "👤",
+          "🎨",
+          "🎵",
+          "🌊",
+          "⚡",
+          "🎭",
+          "🦄",
+          "🔮",
+        ];
+
+        // Agregar jugadores activos ordenados por premio actual
+        const sortedSessions = activeSessions
+          .filter(
+            (session) =>
+              session.gameStatus === "active" ||
+              session.gameStatus === "eliminated"
+          )
+          .sort((a, b) => b.totalPrize - a.totalPrize)
+          .slice(0, 8);
+
+        sortedSessions.forEach((session, index) => {
           const playerItem = document.createElement("div");
           playerItem.className = "player-item";
 
           // Resaltar al jugador actual
-          if (player.playerName === gameState.playerName) {
+          if (session.playerName === gameState.playerName) {
             playerItem.classList.add("current-player");
           }
 
+          // Asignar avatar único
+          const avatar = avatars[index % avatars.length];
+
+          // Determinar estado visual del jugador
+          let statusIndicator = "";
+          if (session.gameStatus === "eliminated") {
+            statusIndicator = "👁️"; // Modo espectador
+          } else if (session.gameStatus === "active") {
+            statusIndicator = "🎮"; // Jugando activamente
+          }
+
           playerItem.innerHTML = `
-            <div class="player-avatar">${player.avatar}</div>
+            <div class="player-avatar">${avatar}</div>
             <div class="player-info-item">
-              <div class="player-name-item">${player.playerName}</div>
-              <div class="player-amount">$${player.currentPrize.toLocaleString()}</div>
+              <div class="player-name-item">${
+                session.playerName
+              } ${statusIndicator}</div>
+              <div class="player-amount">$${session.totalPrize.toLocaleString()}</div>
             </div>
           `;
 
           playersTable.appendChild(playerItem);
         });
 
-        // Si hay menos de 8 jugadores, mostrar mensaje
-        if (leaderboard.length === 0) {
+        // Si no hay jugadores activos, mostrar mensaje
+        if (sortedSessions.length === 0) {
           const emptyMessage = document.createElement("div");
           emptyMessage.className = "player-item";
           emptyMessage.style.justifyContent = "center";
           emptyMessage.innerHTML =
-            '<div style="color: #ccc;">No hay otros jugadores</div>';
+            '<div style="color: #ccc;">No hay jugadores en la partida</div>';
           playersTable.appendChild(emptyMessage);
         }
       }
 
-      // Configurar actualización periódica de la tabla de posiciones
-      let leaderboardInterval;
+      // Configurar actualización periódica de la tabla de jugadores
+      let playersTableInterval;
       let gameWebSocket = null;
 
       function connectGameWebSocket() {
@@ -1033,6 +1390,9 @@
               message
             );
         }
+
+        // Actualizar tabla de jugadores cuando hay cambios de estado
+        loadPlayersTable();
       }
 
       function handleGameStateChange(newGameState) {
@@ -1051,18 +1411,39 @@
           // Juego terminado por el admin
           console.log("🔴 El juego ha sido terminado por el administrador");
           updateGameStatusMessage(
-            "El juego ha sido detenido por el administrador."
+            "El juego ha sido detenido por el administrador. Todos los datos han sido limpiados."
           );
 
           // Si el jugador está en una sesión activa, mostrar mensaje y redirigir
           if (gameState.sessionId) {
-            stopLeaderboardUpdates();
-            alert(
-              "🛑 La partida ha sido terminada por el administrador. Regresando al inicio..."
+            stopPlayersTableUpdates();
+
+            // Limpiar estado local del juego
+            gameState = {
+              questions: [],
+              currentQuestionIndex: 0,
+              currentQuestionId: null,
+              sessionId: null,
+              playerName: null,
+              isSpectator: false,
+              waitingForResult: false,
+              selectedOption: null,
+              correctAnswer: null,
+              lifelinesUsed: {
+                fiftyFifty: false,
+                audience: false,
+                phone: false,
+              },
+            };
+
+            showInfo(
+              "🛑 Partida Terminada",
+              "La partida ha sido terminada por el administrador. Todos los datos han sido limpiados. Regresando al inicio...",
+              true
             );
             setTimeout(() => {
               location.reload();
-            }, 2000);
+            }, 3000);
           }
         }
       }
@@ -1073,13 +1454,23 @@
           data.message
         );
 
+        // Limpiar estado de espera de la pregunta anterior
+        gameState.waitingForResult = false;
+        gameState.selectedOption = null;
+
         // Mostrar mensaje al usuario
-        alert("➡️ " + data.message + ". Avanzando a la siguiente pregunta...");
+        showInfo(
+          "➡️ Nueva Pregunta",
+          data.message + ". Avanzando a la siguiente pregunta...",
+          true
+        );
 
         // Si el jugador está en el juego, avanzar automáticamente
         if (gameState.sessionId && gameState.currentQuestionIndex >= 0) {
           gameState.currentQuestionIndex++;
-          loadCurrentQuestion();
+          animateQuestionTransition(() => {
+            loadCurrentQuestion();
+          });
         }
       }
 
@@ -1089,8 +1480,38 @@
           data.message
         );
 
-        // Mostrar mensaje al usuario
-        alert("💡 " + data.message);
+        // Si estábamos esperando el resultado, evaluar si la respuesta fue correcta
+        if (gameState.waitingForResult && gameState.selectedOption) {
+          const isCorrect =
+            gameState.selectedOption === gameState.correctAnswer;
+
+          if (isCorrect) {
+            showSuccess(
+              "🎉 ¡CORRECTO!",
+              `Tu respuesta "${gameState.selectedOption}" fue la correcta. La respuesta era: ${gameState.correctAnswer}`
+            );
+
+            // Si no está en modo espectador, avanzar a la siguiente pregunta
+            if (!gameState.isSpectator) {
+              setTimeout(() => {
+                gameState.currentQuestionIndex++;
+                loadCurrentQuestion();
+              }, 3000);
+            }
+          } else {
+            showError(
+              "❌ INCORRECTO",
+              `Tu respuesta "${gameState.selectedOption}" no fue correcta. La respuesta correcta era: ${gameState.correctAnswer}`
+            );
+          }
+
+          // Limpiar estado de espera
+          gameState.waitingForResult = false;
+          gameState.selectedOption = null;
+        } else {
+          // Solo mostrar el mensaje del admin si no estábamos esperando resultado
+          showInfo("💡 Respuesta Revelada", data.message, true);
+        }
 
         // Si estamos en una pregunta activa, resaltar la respuesta correcta
         if (gameState.correctAnswer) {
@@ -1105,10 +1526,27 @@
             }
           });
 
-          // Mostrar mensaje específico con la respuesta
+          // Si no estábamos esperando resultado, mostrar mensaje específico con la respuesta
+          if (!gameState.waitingForResult) {
+            setTimeout(() => {
+              showInfo(
+                "💡 Respuesta Correcta",
+                `La respuesta correcta es: ${gameState.correctAnswer}`,
+                true
+              );
+            }, 1000);
+          }
+        }
+
+        // Rehabilitar las opciones para la siguiente pregunta (si no está en modo espectador)
+        if (!gameState.isSpectator) {
           setTimeout(() => {
-            alert(`💡 La respuesta correcta es: ${gameState.correctAnswer}`);
-          }, 1000);
+            const allOptions = document.querySelectorAll(".option");
+            allOptions.forEach((opt) => {
+              opt.style.pointerEvents = "auto";
+              opt.style.opacity = "1";
+            });
+          }, 2000);
         }
       }
 
@@ -1116,8 +1554,10 @@
         console.log("👁️ Entrando en modo espectador...");
 
         // Mostrar mensaje al usuario
-        alert(
-          "👁️ Ahora estás en modo espectador. Podrás ver las preguntas y respuestas correctas pero no podrás participar."
+        showInfo(
+          "👁️ Modo Espectador",
+          "Ahora estás en modo espectador. Podrás ver las preguntas y respuestas correctas pero no podrás participar.",
+          true
         );
 
         // Marcar como espectador
@@ -1171,15 +1611,15 @@
         console.log("✅ Modo espectador activado");
       }
 
-      async function startLeaderboardUpdates() {
+      async function startPlayersTableUpdates() {
         // Actualizar cada 10 segundos
-        leaderboardInterval = setInterval(loadLeaderboard, 10000);
+        playersTableInterval = setInterval(loadPlayersTable, 10000);
       }
 
-      function stopLeaderboardUpdates() {
-        if (leaderboardInterval) {
-          clearInterval(leaderboardInterval);
-          leaderboardInterval = null;
+      function stopPlayersTableUpdates() {
+        if (playersTableInterval) {
+          clearInterval(playersTableInterval);
+          playersTableInterval = null;
         }
       }
 
@@ -1187,7 +1627,7 @@
         const playerName = document.getElementById("playerName").value.trim();
 
         if (playerName === "") {
-          alert("Por favor, ingresa tu nombre para comenzar");
+          showError("❌ Error", "Por favor, ingresa tu nombre para comenzar");
           return;
         }
 
@@ -1204,8 +1644,9 @@
             !gameStateData.success ||
             !gameStateData.data.gameState.isActive
           ) {
-            alert(
-              "⏳ El juego no está activo. Espera a que el administrador inicie la partida."
+            showInfo(
+              "⏳ Juego Inactivo",
+              "El juego no está activo. Espera a que el administrador inicie la partida."
             );
             return;
           }
@@ -1235,15 +1676,17 @@
             proceedToGame(playerName);
           } else {
             console.error("❌ Error creando sesión:", data.error);
-            alert(
-              `❌ ${data.error || "Error creando sesión. Inténtalo de nuevo."}`
+            showError(
+              "❌ Error",
+              `${data.error || "Error creando sesión. Inténtalo de nuevo."}`
             );
             return;
           }
         } catch (error) {
           console.error("❌ Error de conexión:", error);
-          alert(
-            "❌ Error de conexión. Verifica tu internet y que el servidor esté funcionando."
+          showError(
+            "❌ Error de Conexión",
+            "Error de conexión. Verifica tu internet y que el servidor esté funcionando."
           );
           return;
         }
@@ -1258,7 +1701,7 @@
         document.getElementById("waitingPlayerName").textContent = playerName;
 
         // Iniciar actualizaciones de tabla de posiciones
-        startLeaderboardUpdates();
+        startPlayersTableUpdates();
 
         // Esperar 2 segundos y luego mostrar el juego
         setTimeout(async () => {
@@ -1269,6 +1712,9 @@
           document.getElementById("gameScreen").style.display = "block";
           document.getElementById("prizeLadder").style.display = "block";
           document.getElementById("playersTable").style.display = "block";
+
+          // Inicializar escalera de premios
+          updatePrizeLadder();
 
           // Mostrar nombre del jugador
           const playerNameDisplay =
@@ -1290,8 +1736,9 @@
           }
 
           if (!gameState.questions || gameState.questions.length === 0) {
-            alert(
-              "❌ Error: No se pudieron cargar las preguntas. Recarga la página."
+            showError(
+              "❌ Error",
+              "No se pudieron cargar las preguntas. Recarga la página."
             );
             return;
           }
@@ -1331,21 +1778,26 @@
           try {
             await loadQuestions();
             if (!gameState.questions || gameState.questions.length === 0) {
-              alert(
-                "❌ No se pudieron cargar las preguntas. Verifica la conexión al servidor."
+              showError(
+                "❌ Error",
+                "No se pudieron cargar las preguntas. Verifica la conexión al servidor."
               );
               return;
             }
           } catch (error) {
             console.error("❌ Error cargando preguntas:", error);
-            alert("❌ Error cargando preguntas. Recarga la página.");
+            showError(
+              "❌ Error",
+              "Error cargando preguntas. Recarga la página."
+            );
             return;
           }
         }
 
         if (gameState.currentQuestionIndex >= gameState.questions.length) {
-          alert(
-            "🎉 ¡Felicidades! Has completado todas las preguntas disponibles."
+          showSuccess(
+            "🎉 ¡Felicidades!",
+            "Has completado todas las preguntas disponibles."
           );
           return;
         }
@@ -1357,7 +1809,7 @@
           console.error(
             `❌ Pregunta no encontrada en índice ${gameState.currentQuestionIndex}`
           );
-          alert("❌ Error cargando la pregunta. Reintentando...");
+          showError("❌ Error", "Error cargando la pregunta. Reintentando...");
 
           // Reintentar cargar preguntas
           try {
@@ -1370,14 +1822,17 @@
             console.error("❌ Error en reintento:", error);
           }
 
-          alert("❌ No se pudo cargar la pregunta. Recarga la página.");
+          showError(
+            "❌ Error",
+            "No se pudo cargar la pregunta. Recarga la página."
+          );
           return;
         }
 
         // 🔍 VALIDAR QUE LA PREGUNTA TIENE UN ID VÁLIDO
         if (!question.id || question.id <= 0) {
           console.error(`❌ Pregunta sin ID válido:`, question);
-          alert("❌ Error: pregunta sin ID válido. Recarga la página.");
+          showError("❌ Error", "Pregunta sin ID válido. Recarga la página.");
           return;
         }
 
@@ -1419,6 +1874,12 @@
           option.style.borderColor = "#4a4a4a";
           option.style.color = "white";
 
+          // Rehabilitar opciones para nueva pregunta (si no está en modo espectador)
+          if (!gameState.isSpectator) {
+            option.style.pointerEvents = "auto";
+            option.style.opacity = "1";
+          }
+
           // Actualizar gameState
           gameState.questionData[letter] = {
             text: optionText,
@@ -1431,18 +1892,70 @@
             question.question
           }`
         );
+
+        // Actualizar escalera de premios
+        updatePrizeLadder();
+      }
+
+      function updatePrizeLadder() {
+        const prizeLadder = document.getElementById("prizeLadder");
+        if (!prizeLadder) return;
+
+        // Definir los premios en orden ascendente (de menor a mayor)
+        const prizeAmounts = [
+          100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000,
+          125000, 250000, 500000, 1000000,
+        ];
+
+        // Limpiar escalera actual
+        prizeLadder.innerHTML = "";
+
+        // Crear elementos de premio en orden descendente (más alto primero)
+        prizeAmounts
+          .slice()
+          .reverse()
+          .forEach((amount, index) => {
+            const prizeItem = document.createElement("div");
+            prizeItem.className = "prize-item";
+
+            // El índice real de la pregunta (0-based) vs display (1-based)
+            const questionNumber = gameState.currentQuestionIndex + 1;
+            const prizeIndex = prizeAmounts.length - index; // 15, 14, 13... 1
+
+            // Marcar como actual si corresponde a la pregunta actual
+            if (prizeIndex === questionNumber) {
+              prizeItem.classList.add("current");
+            }
+
+            // Marcar como ganado si está por debajo de la pregunta actual
+            if (prizeIndex < questionNumber) {
+              prizeItem.classList.add("won");
+            }
+
+            prizeItem.textContent = `$${amount.toLocaleString()}`;
+            prizeLadder.appendChild(prizeItem);
+          });
+
+        console.log(
+          `🎯 Escalera de premios actualizada para pregunta ${
+            gameState.currentQuestionIndex + 1
+          }`
+        );
       }
 
       async function useFiftyFifty() {
         // Verificar si está en modo espectador
         if (gameState.isSpectator) {
-          alert("👁️ Estás en modo espectador. No puedes usar comodines.");
+          showInfo(
+            "👁️ Modo Espectador",
+            "Estás en modo espectador. No puedes usar comodines."
+          );
           return;
         }
 
         // Verificar si ya se usó este comodín
         if (gameState.lifelinesUsed.fiftyFifty) {
-          alert("Ya has usado este comodín");
+          showInfo("⚠️ Comodín Usado", "Ya has usado este comodín");
           return;
         }
 
@@ -1464,7 +1977,7 @@
           const data = await response.json();
 
           if (!data.success) {
-            alert(data.error || "Error usando comodín");
+            showError("❌ Error", data.error || "Error usando comodín");
             return;
           }
 
@@ -1522,20 +2035,26 @@
 
         // Mostrar mensaje después de la animación
         setTimeout(() => {
-          alert("50:50 usado! Dos opciones incorrectas han sido eliminadas.");
+          showSuccess(
+            "50:50 Usado!",
+            "Dos opciones incorrectas han sido eliminadas."
+          );
         }, 1500);
       }
 
       async function useAudiencePoll() {
         // Verificar si está en modo espectador
         if (gameState.isSpectator) {
-          alert("👁️ Estás en modo espectador. No puedes usar comodines.");
+          showInfo(
+            "👁️ Modo Espectador",
+            "Estás en modo espectador. No puedes usar comodines."
+          );
           return;
         }
 
         // Verificar si ya se usó este comodín
         if (gameState.lifelinesUsed.audience) {
-          alert("Ya has usado este comodín");
+          showInfo("⚠️ Comodín Usado", "Ya has usado este comodín");
           return;
         }
 
@@ -1557,7 +2076,7 @@
           const data = await response.json();
 
           if (!data.success) {
-            alert(data.error || "Error usando comodín");
+            showError("❌ Error", data.error || "Error usando comodín");
             return;
           }
 
@@ -1673,8 +2192,9 @@
       async function selectOption(option, optionLetter) {
         // Verificar si está en modo espectador
         if (gameState.isSpectator) {
-          alert(
-            "👁️ Estás en modo espectador. No puedes seleccionar respuestas."
+          showInfo(
+            "👁️ Modo Espectador",
+            "Estás en modo espectador. No puedes seleccionar respuestas."
           );
           return;
         }
@@ -1713,8 +2233,9 @@
               gameState.currentQuestionId
             );
             console.error("🔍 Estado completo del juego:", gameState);
-            alert(
-              "❌ Error: No se puede enviar la respuesta. ID de pregunta inválido."
+            showError(
+              "❌ Error",
+              "No se puede enviar la respuesta. ID de pregunta inválido."
             );
             return;
           }
@@ -1752,54 +2273,41 @@
           if (data.success) {
             const session = data.data.session;
 
-            // Mostrar resultado
+            // Solo confirmar que la respuesta fue enviada, no mostrar el resultado
             setTimeout(() => {
-              if (optionLetter === gameState.correctAnswer) {
-                alert(`¡Correcto! ${data.message}`);
+              // Simplemente confirmar el envío
+              showSuccess(
+                "✅ Respuesta Enviada",
+                "Tu respuesta ha sido enviada. Espera a que el administrador revele el resultado."
+              );
 
-                // Avanzar a la siguiente pregunta
-                gameState.currentQuestionIndex++;
+              // Deshabilitar todas las opciones para evitar cambios
+              const allOptions = document.querySelectorAll(".option");
+              allOptions.forEach((opt) => {
+                opt.style.pointerEvents = "none";
+                opt.style.opacity = "0.7";
+              });
 
-                if (session.gameStatus === "finished") {
-                  // Detener actualizaciones de tabla de posiciones
-                  stopLeaderboardUpdates();
+              // Marcar que estamos esperando el resultado
+              gameState.waitingForResult = true;
+              gameState.selectedOption = optionLetter;
 
-                  alert("¡Felicidades! Has completado el juego.");
-                } else {
-                  setTimeout(() => {
-                    loadCurrentQuestion();
-                  }, 2000);
-                }
-              } else {
-                alert(data.message);
-
-                // Verificar si fue eliminado o realmente terminó el juego
-                if (session.gameStatus === "eliminated") {
-                  // Entrar en modo espectador
-                  setTimeout(() => {
-                    enterSpectatorMode();
-                  }, 2000);
-                } else {
-                  // Juego terminado completamente
-                  setTimeout(() => {
-                    // Detener actualizaciones de tabla de posiciones
-                    stopLeaderboardUpdates();
-
-                    alert(
-                      `Juego terminado. Tu premio final: $${session.totalPrize}`
-                    );
-                    // Reiniciar o volver al inicio
-                    location.reload();
-                  }, 2000);
-                }
+              // Si el jugador fue eliminado, entrar en modo espectador después de un tiempo
+              if (session.gameStatus === "eliminated") {
+                setTimeout(() => {
+                  enterSpectatorMode();
+                }, 1000);
               }
             }, 500);
           } else {
-            alert("Error enviando respuesta: " + data.error);
+            showError("❌ Error", "Error enviando respuesta: " + data.error);
           }
         } catch (error) {
           console.error("❌ Error enviando respuesta:", error);
-          alert("Error de conexión al enviar respuesta");
+          showError(
+            "❌ Error de Conexión",
+            "Error de conexión al enviar respuesta"
+          );
         }
       }
 

@@ -292,3 +292,8 @@ func (r *RedisClient) GetSetMembers(key string) ([]string, error) {
 func (r *RedisClient) GetKeysByPattern(pattern string) ([]string, error) {
 	return r.client.Keys(r.ctx, pattern).Result()
 }
+
+// Delete elimina una o varias claves
+func (r *RedisClient) Delete(keys ...string) error {
+	return r.client.Del(r.ctx, keys...).Err()
+}

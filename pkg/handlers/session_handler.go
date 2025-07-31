@@ -326,6 +326,17 @@ func (h *SessionHandler) GetLeaderboard(ctx *fasthttp.RequestCtx) {
 	h.respondWithSuccess(ctx, leaderboard, "Tabla de posiciones obtenida exitosamente")
 }
 
+// GetPlayersStatus maneja GET /api/sessions/status
+func (h *SessionHandler) GetPlayersStatus(ctx *fasthttp.RequestCtx) {
+	status, err := h.sessionService.GetPlayersStatus()
+	if err != nil {
+		h.respondWithError(ctx, fasthttp.StatusInternalServerError, fmt.Sprintf("Error obteniendo estado de jugadores: %v", err))
+		return
+	}
+
+	h.respondWithSuccess(ctx, status, "Estado de jugadores obtenido exitosamente")
+}
+
 // Métodos auxiliares para respuestas HTTP
 func (h *SessionHandler) respondWithJSON(ctx *fasthttp.RequestCtx, statusCode int, response interface{}) {
 	ctx.Response.Header.Set("Content-Type", "application/json")

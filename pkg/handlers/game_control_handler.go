@@ -14,12 +14,14 @@ import (
 
 type GameControlHandler struct {
 	gameStateService *services.GameStateService
+	sessionService   *services.SessionService
 	hub              *websocketHub.Hub
 }
 
-func NewGameControlHandler(gameStateService *services.GameStateService, hub *websocketHub.Hub) *GameControlHandler {
+func NewGameControlHandler(gameStateService *services.GameStateService, sessionService *services.SessionService, hub *websocketHub.Hub) *GameControlHandler {
 	return &GameControlHandler{
 		gameStateService: gameStateService,
+		sessionService:   sessionService,
 		hub:              hub,
 	}
 }
@@ -106,19 +108,28 @@ func (gc *GameControlHandler) EndGame(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	// Terminar el juego
 	err = gc.gameStateService.EndGame()
 	if err != nil {
 		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error terminando partida")
 		return
 	}
 
-	gc.hub.BroadcastGameState(false, "Partida terminada - Los jugadores no pueden ingresar")
+	// Limpiar todas las sesiones y datos de la partida
+	err = gc.sessionService.ClearAllSessions()
+	if err != nil {
+		log.Printf("⚠️ Error limpiando sesiones: %v", err)
+		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error limpiando datos de la partida")
+		return
+	}
+
+	gc.hub.BroadcastGameState(false, "Partida terminada - Se han limpiado todos los datos")
 
 	gc.respondWithSuccess(ctx, map[string]interface{}{
 		"timestamp": time.Now().Format(time.RFC3339),
-	}, "Partida terminada exitosamente")
+	}, "Partida terminada exitosamente y datos limpiados")
 
-	log.Println("🔴 Partida terminada desde el panel de administración")
+	log.Println("🔴 Partida terminada y datos limpiados desde el panel de administración")
 }
 
 // GetGameState devuelve el estado actual del juego
