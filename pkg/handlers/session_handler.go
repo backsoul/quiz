@@ -14,19 +14,17 @@ import (
 
 // SessionHandler maneja las peticiones HTTP para sesiones
 type SessionHandler struct {
-	sessionService   *services.SessionService
-	questionService  *services.QuestionService
-	gameStateService *services.GameStateService
-	hub              *websocketHub.Hub
+	sessionService  *services.SessionService
+	questionService *services.QuestionService
+	hub             *websocketHub.Hub
 }
 
 // NewSessionHandler crea una nueva instancia del handler de sesiones
-func NewSessionHandler(sessionService *services.SessionService, questionService *services.QuestionService, gameStateService *services.GameStateService, hub *websocketHub.Hub) *SessionHandler {
+func NewSessionHandler(sessionService *services.SessionService, questionService *services.QuestionService, hub *websocketHub.Hub) *SessionHandler {
 	return &SessionHandler{
-		sessionService:   sessionService,
-		questionService:  questionService,
-		gameStateService: gameStateService,
-		hub:              hub,
+		sessionService:  sessionService,
+		questionService: questionService,
+		hub:             hub,
 	}
 }
 
@@ -43,31 +41,11 @@ func (h *SessionHandler) CreateSession(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// 🚨 VALIDAR ESTADO DEL JUEGO ANTES DE CREAR SESIÓN
-	gameState, err := h.gameStateService.GetGameState()
-	if err != nil {
-		h.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error verificando estado del juego")
-		return
-	}
-
-	if !gameState.IsActive {
-		h.respondWithError(ctx, fasthttp.StatusForbidden, "El juego no está activo. Espera a que el administrador inicie la partida.")
-		return
-	}
-
 	session, err := h.sessionService.CreateSession(request.PlayerName)
 	if err != nil {
 		h.respondWithError(ctx, fasthttp.StatusInternalServerError, fmt.Sprintf("Error creando sesión: %v", err))
 		return
 	}
-
-	// Notificar al admin sobre el nuevo jugador
-	h.hub.BroadcastMessage("playerJoined", map[string]interface{}{
-		"playerName": request.PlayerName,
-		"sessionId":  session.ID,
-		"timestamp":  time.Now().Format(time.RFC3339),
-		"message":    fmt.Sprintf("%s se unió al juego", request.PlayerName),
-	})
 
 	log.Printf("👤 Nuevo jugador: %s (ID: %s)", request.PlayerName, session.ID)
 

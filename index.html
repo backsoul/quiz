@@ -4,13 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>¿Quién Quiere Ser Millonario?</title>
+    <link rel="stylesheet" href="shared.css" />
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
       body {
         font-family: "Arial", sans-serif;
         background: linear-gradient(
@@ -38,17 +33,17 @@
       }
 
       .welcome-screen h1 {
-        font-size: 2.5rem;
+        font-size: 3rem;
         margin-bottom: 30px;
         background: linear-gradient(45deg, #ffd700, #ffed4e);
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
       }
 
       .name-input {
-        margin-bottom: 30px;
+        margin: 30px 0;
       }
 
       .name-input input {
@@ -85,84 +80,6 @@
       /* Pantalla del juego */
       .game-screen {
         display: none;
-      }
-
-      /* Pantalla de espera */
-      .waiting-screen {
-        display: none;
-      }
-
-      .waiting-message {
-        font-size: 1.8rem;
-        margin-bottom: 30px;
-        color: #ffd700;
-        text-align: center;
-        font-weight: bold;
-      }
-
-      .animated-text {
-        animation: pulse 1.5s ease-in-out infinite;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 0.7;
-          transform: scale(1);
-        }
-        50% {
-          opacity: 1;
-          transform: scale(1.05);
-        }
-      }
-
-      .loading-dots {
-        display: inline-block;
-        animation: loadingDots 1.5s infinite;
-      }
-
-      @keyframes loadingDots {
-        0%,
-        20% {
-          content: "";
-        }
-        40% {
-          content: ".";
-        }
-        60% {
-          content: "..";
-        }
-        80%,
-        100% {
-          content: "...";
-        }
-      }
-
-      .loading-dots::after {
-        content: "";
-        animation: loadingDots 1.5s infinite;
-      }
-
-      .presenter-icon {
-        font-size: 4rem;
-        margin: 20px 0;
-        animation: bounce 2s ease-in-out infinite;
-      }
-
-      @keyframes bounce {
-        0%,
-        20%,
-        50%,
-        80%,
-        100% {
-          transform: translateY(0);
-        }
-        40% {
-          transform: translateY(-20px);
-        }
-        60% {
-          transform: translateY(-10px);
-        }
       }
 
       .player-info {
@@ -225,6 +142,32 @@
         box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
       }
 
+      .option.selected {
+        border-color: #ffd700;
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        color: #000;
+      }
+
+      .option.correct {
+        border-color: #4caf50;
+        background: linear-gradient(135deg, #4caf50, #45a049);
+        color: white;
+        animation: pulse-correct 2s infinite;
+      }
+
+      .option.incorrect {
+        border-color: #f44336;
+        background: linear-gradient(135deg, #f44336, #d32f2f);
+        color: white;
+      }
+
+      .option.eliminated {
+        opacity: 0.3;
+        pointer-events: none;
+        background: rgba(100, 100, 100, 0.2) !important;
+        border-color: #666 !important;
+      }
+
       .option-letter {
         background: #ffd700;
         color: #000;
@@ -268,45 +211,148 @@
         border-color: #666;
       }
 
-      .lifeline.used:hover {
-        border-color: #666;
-        background: rgba(100, 100, 100, 0.2);
+      .score-display {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 2px solid #ffd700;
+        border-radius: 10px;
+        padding: 15px;
+        color: #ffd700;
+        font-weight: bold;
       }
 
-      .option.eliminated {
-        opacity: 0.3;
-        pointer-events: none;
-        background: rgba(100, 100, 100, 0.2) !important;
-        border-color: #666 !important;
-        animation: fadeOut 0.8s ease-in-out;
+      .next-btn {
+        background: linear-gradient(45deg, #4caf50, #66bb6a, #4caf50);
+        background-size: 200% 200%;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 18px 40px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin: 25px;
+        transition: all 0.4s ease;
+        box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        position: relative;
+        overflow: hidden;
+        animation: pulseGreen 2s infinite;
+        opacity: 1;
+        transform: translateY(0);
       }
 
-      .option.eliminated .option-letter {
-        background: #666;
-        color: #333;
+      .next-btn:hover {
+        transform: scale(1.08) translateY(-2px);
+        box-shadow: 0 6px 25px rgba(76, 175, 80, 0.5);
+        background-position: 100% 0;
       }
 
-      @keyframes fadeOut {
-        0% {
-          opacity: 1;
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(0.9);
-        }
-        100% {
-          opacity: 0.3;
-          transform: scale(1);
-        }
+      .next-btn:active {
+        transform: scale(1.02) translateY(0);
       }
 
-      @keyframes highlight {
+      .next-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .next-btn:hover::before {
+        left: 100%;
+      }
+
+      .next-btn[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+        animation: none;
+      }
+
+      @keyframes pulseGreen {
         0%,
         100% {
-          box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+          box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
         }
         50% {
-          box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+          box-shadow: 0 4px 25px rgba(76, 175, 80, 0.6);
+        }
+      }
+
+      .game-over {
+        text-align: center;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 3px solid #ffd700;
+        border-radius: 20px;
+        margin: 20px 0;
+      }
+
+      .final-score {
+        font-size: 2rem;
+        color: #ffd700;
+        margin: 20px 0;
+        font-weight: bold;
+      }
+
+      .play-again-btn {
+        background: linear-gradient(45deg, #ffd700, #ffed4e);
+        color: #000;
+        border: none;
+        border-radius: 15px;
+        padding: 15px 30px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin: 10px;
+        transition: transform 0.3s ease;
+      }
+
+      .play-again-btn:hover {
+        transform: scale(1.05);
+      }
+
+      @keyframes pulse-correct {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(76, 175, 80, 0.7);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          width: 95%;
+        }
+        .welcome-screen h1 {
+          font-size: 2rem;
+        }
+        .options-container {
+          grid-template-columns: 1fr;
+        }
+        .score-display {
+          position: relative;
+          top: auto;
+          right: auto;
+          margin: 20px auto;
+        }
+        .name-input input {
+          min-width: 250px;
         }
       }
 
@@ -335,18 +381,6 @@
         padding: 30px;
         max-width: 500px;
         width: 90%;
-        animation: modalSlideIn 0.5s ease-out;
-      }
-
-      @keyframes modalSlideIn {
-        from {
-          transform: translateY(-50px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
       }
 
       .audience-title {
@@ -355,10 +389,6 @@
         font-size: 1.5rem;
         font-weight: bold;
         margin-bottom: 20px;
-      }
-
-      .audience-results {
-        margin: 20px 0;
       }
 
       .result-item {
@@ -424,333 +454,6 @@
       .close-audience-btn:hover {
         transform: scale(1.05);
       }
-
-      .prize-ladder {
-        position: fixed;
-        right: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: rgba(0, 0, 0, 0.8);
-        border: 2px solid #ffd700;
-        border-radius: 10px;
-        padding: 20px;
-        max-height: 80vh;
-        overflow-y: auto;
-      }
-
-      .prize-item {
-        padding: 5px 10px;
-        margin: 2px 0;
-        border-radius: 5px;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-      }
-
-      .prize-item.current {
-        background: #ffd700;
-        color: #000;
-        font-weight: bold;
-        animation: prize-pulse 2s infinite;
-      }
-
-      .prize-item.won {
-        background: rgba(0, 255, 0, 0.2);
-        color: #00ff00;
-        border: 1px solid #00ff00;
-      }
-
-      @keyframes prize-pulse {
-        0%,
-        100% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.05);
-        }
-      }
-
-      /* Tabla de jugadores */
-      .players-table {
-        position: fixed;
-        left: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: rgba(0, 0, 0, 0.8);
-        border: 2px solid #ffd700;
-        border-radius: 10px;
-        padding: 20px;
-        max-height: 80vh;
-        overflow-y: auto;
-        min-width: 200px;
-      }
-
-      .players-title {
-        text-align: center;
-        color: #ffd700;
-        font-size: 1.1rem;
-        font-weight: bold;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #ffd700;
-        padding-bottom: 10px;
-      }
-
-      .player-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 15px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        transition: all 0.3s ease;
-      }
-
-      .player-item:hover {
-        background: rgba(255, 215, 0, 0.1);
-        transform: translateX(5px);
-      }
-
-      .player-item.current-player {
-        background: linear-gradient(
-          135deg,
-          rgba(255, 215, 0, 0.2) 0%,
-          rgba(255, 215, 0, 0.1) 100%
-        );
-        border-left: 4px solid #ffd700;
-        font-weight: bold;
-      }
-
-      .player-item.current-player .player-name-item {
-        color: #ffd700;
-      }
-      .player-item.current-player {
-        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-        color: #000;
-        font-weight: bold;
-        border-color: #ffd700;
-      }
-
-      .player-avatar {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        margin-right: 10px;
-        flex-shrink: 0;
-        color: white;
-        font-size: 0.9rem;
-      }
-
-      .player-item.current-player .player-avatar {
-        background: linear-gradient(135deg, #000 0%, #333 100%);
-        color: #ffd700;
-      }
-
-      .player-info-item {
-        flex: 1;
-      }
-
-      .player-name-item {
-        font-size: 0.9rem;
-        margin-bottom: 2px;
-      }
-
-      .player-amount {
-        font-size: 0.8rem;
-        color: #ccc;
-      }
-
-      .player-item.current-player .player-amount {
-        color: #000;
-      }
-
-      @media (max-width: 768px) {
-        .container {
-          width: 95%;
-        }
-
-        .welcome-screen h1 {
-          font-size: 2rem;
-        }
-
-        .options-container {
-          grid-template-columns: 1fr;
-        }
-
-        .prize-ladder {
-          display: none;
-        }
-
-        .players-table {
-          display: none;
-        }
-
-        .name-input input {
-          min-width: 250px;
-        }
-      }
-
-      /* Diálogos animados */
-      .dialog-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.3s ease;
-      }
-
-      .dialog-overlay.show {
-        opacity: 1;
-        visibility: visible;
-      }
-
-      .dialog-box {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 3px solid #ffd700;
-        border-radius: 20px;
-        padding: 30px;
-        max-width: 500px;
-        width: 90%;
-        text-align: center;
-        transform: scale(0.7) translateY(-50px);
-        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-      }
-
-      .dialog-overlay.show .dialog-box {
-        transform: scale(1) translateY(0);
-      }
-
-      .dialog-icon {
-        font-size: 3rem;
-        margin-bottom: 20px;
-        display: block;
-      }
-
-      .dialog-title {
-        font-size: 1.5rem;
-        color: #ffd700;
-        margin-bottom: 15px;
-        font-weight: bold;
-      }
-
-      .dialog-message {
-        font-size: 1.1rem;
-        color: #fff;
-        margin-bottom: 25px;
-        line-height: 1.5;
-      }
-
-      .dialog-buttons {
-        display: flex;
-        gap: 15px;
-        justify-content: center;
-      }
-
-      .dialog-btn {
-        padding: 12px 25px;
-        border: none;
-        border-radius: 10px;
-        font-size: 1rem;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-
-      .dialog-btn.primary {
-        background: linear-gradient(45deg, #ffd700, #ffed4e);
-        color: #000;
-      }
-
-      .dialog-btn.primary:hover {
-        background: linear-gradient(45deg, #ffed4e, #ffd700);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
-      }
-
-      .dialog-btn.secondary {
-        background: transparent;
-        color: #ffd700;
-        border: 2px solid #ffd700;
-      }
-
-      .dialog-btn.secondary:hover {
-        background: #ffd700;
-        color: #000;
-      }
-
-      /* Animaciones de transición de preguntas */
-      .question-container.transitioning {
-        animation: questionTransition 1.2s ease-in-out;
-      }
-
-      @keyframes questionTransition {
-        0% {
-          transform: translateX(0) scale(1);
-          opacity: 1;
-        }
-        25% {
-          transform: translateX(-50px) scale(0.95);
-          opacity: 0.7;
-        }
-        50% {
-          transform: translateX(-100%) scale(0.9);
-          opacity: 0;
-        }
-        51% {
-          transform: translateX(100%) scale(0.9);
-          opacity: 0;
-        }
-        75% {
-          transform: translateX(50px) scale(0.95);
-          opacity: 0.7;
-        }
-        100% {
-          transform: translateX(0) scale(1);
-          opacity: 1;
-        }
-      }
-
-      .question-appear {
-        animation: questionAppear 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-      }
-
-      @keyframes questionAppear {
-        0% {
-          transform: translateY(50px) scale(0.8);
-          opacity: 0;
-        }
-        100% {
-          transform: translateY(0) scale(1);
-          opacity: 1;
-        }
-      }
-
-      .option.option-reveal {
-        animation: optionReveal 0.6s ease forwards;
-      }
-
-      @keyframes optionReveal {
-        0% {
-          transform: translateX(-30px);
-          opacity: 0;
-        }
-        100% {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
     </style>
   </head>
   <body>
@@ -771,64 +474,28 @@
         </button>
       </div>
 
-      <!-- Pantalla de espera -->
-      <div class="waiting-screen" id="waitingScreen">
-        <div class="presenter-icon">🎤</div>
-        <div class="waiting-message animated-text">
-          Espera a que el presentador inicie el juego<span
-            class="loading-dots"
-          ></span>
-        </div>
-        <div style="color: #ccc; font-size: 1.1rem">
-          ¡Buena suerte,
-          <span class="player-name" id="waitingPlayerName"></span>!
-        </div>
-      </div>
-
       <!-- Pantalla del juego -->
       <div class="game-screen" id="gameScreen">
+        <div class="score-display">
+          Pregunta: <span id="currentQuestionNum">1</span>/8<br />
+          Premio: $<span id="currentPrize">1,000</span>
+        </div>
+
         <div class="player-info">
           ¡Bienvenido/a,
           <span class="player-name" id="playerNameDisplay"></span>!
         </div>
 
         <div class="question-container">
-          <div class="question-number">Pregunta 1 de 15</div>
-          <div class="question-text">¿Cuál es la capital de Francia?</div>
+          <div class="question-number">
+            Pregunta <span id="questionNumber">1</span> de 8
+          </div>
+          <div class="question-text" id="questionText">
+            Cargando pregunta...
+          </div>
 
-          <div class="options-container">
-            <div
-              class="option"
-              onclick="selectOption(this, 'A')"
-              data-option="A"
-            >
-              <div class="option-letter">A</div>
-              <div>Madrid</div>
-            </div>
-            <div
-              class="option"
-              onclick="selectOption(this, 'B')"
-              data-option="B"
-            >
-              <div class="option-letter">B</div>
-              <div>París</div>
-            </div>
-            <div
-              class="option"
-              onclick="selectOption(this, 'C')"
-              data-option="C"
-            >
-              <div class="option-letter">C</div>
-              <div>Londres</div>
-            </div>
-            <div
-              class="option"
-              onclick="selectOption(this, 'D')"
-              data-option="D"
-            >
-              <div class="option-letter">D</div>
-              <div>Roma</div>
-            </div>
+          <div class="options-container" id="optionsContainer">
+            <!-- Las opciones se cargarán dinámicamente -->
           </div>
         </div>
 
@@ -838,55 +505,48 @@
             onclick="useFiftyFifty()"
             id="fiftyFiftyLifeline"
           >
-            50:50
+            🔄 50:50
           </div>
           <div
             class="lifeline"
             onclick="useAudiencePoll()"
             id="audienceLifeline"
           >
-            Pregunta al Público
+            👥 Pregunta al Público
           </div>
         </div>
+
+        <button
+          class="next-btn"
+          id="nextBtn"
+          onclick="nextQuestion()"
+          style="display: none"
+        >
+          <span id="nextBtnText">Siguiente Pregunta</span>
+          <span id="nextBtnIcon"> ➤</span>
+        </button>
+      </div>
+
+      <!-- Pantalla de game over -->
+      <div class="game-over" id="gameOverScreen" style="display: none">
+        <h2 id="gameOverTitle">¡Juego Terminado!</h2>
+        <div class="final-score" id="finalScore">$0</div>
+        <p id="gameOverMessage">¡Gracias por jugar!</p>
+        <button class="play-again-btn" onclick="restartGame()">
+          Jugar de Nuevo
+        </button>
       </div>
     </div>
 
     <!-- Modal para pregunta al público -->
     <div class="audience-modal" id="audienceModal">
       <div class="audience-content">
-        <div class="audience-title">🎭 Pregunta al Público 👥</div>
+        <div class="audience-title">👥 Pregunta al Público</div>
         <p style="text-align: center; margin-bottom: 20px; color: #ccc">
           Resultados de la votación del público:
         </p>
         <div class="audience-results" id="audienceResults">
-          <div class="result-item">
-            <div class="result-letter">A</div>
-            <div class="result-bar-container">
-              <div class="result-bar" id="barA"></div>
-            </div>
-            <div class="result-percentage" id="percentA">0%</div>
-          </div>
-          <div class="result-item">
-            <div class="result-letter">B</div>
-            <div class="result-bar-container">
-              <div class="result-bar" id="barB"></div>
-            </div>
-            <div class="result-percentage" id="percentB">0%</div>
-          </div>
-          <div class="result-item">
-            <div class="result-letter">C</div>
-            <div class="result-bar-container">
-              <div class="result-bar" id="barC"></div>
-            </div>
-            <div class="result-percentage" id="percentC">0%</div>
-          </div>
-          <div class="result-item">
-            <div class="result-letter">D</div>
-            <div class="result-bar-container">
-              <div class="result-bar" id="barD"></div>
-            </div>
-            <div class="result-percentage" id="percentD">0%</div>
-          </div>
+          <!-- Los resultados se generarán dinámicamente -->
         </div>
         <button class="close-audience-btn" onclick="closeAudienceModal()">
           Cerrar
@@ -894,1424 +554,363 @@
       </div>
     </div>
 
-    <!-- Sistema de diálogos animados -->
-    <div class="dialog-overlay" id="dialogOverlay">
-      <div class="dialog-box" id="dialogBox">
-        <span class="dialog-icon" id="dialogIcon">ℹ️</span>
-        <div class="dialog-title" id="dialogTitle">Título</div>
-        <div class="dialog-message" id="dialogMessage">Mensaje</div>
-        <div class="dialog-buttons" id="dialogButtons">
-          <button class="dialog-btn primary" id="dialogPrimaryBtn">
-            Aceptar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tabla de jugadores -->
-    <div class="players-table" id="playersTable" style="display: none">
-      <div class="players-title">JUGADORES</div>
-      <div class="player-item current-player">
-        <div class="player-avatar">👤</div>
-        <div class="player-info-item">
-          <div class="player-name-item" id="currentPlayerName">Jugador</div>
-          <div class="player-amount">$100</div>
-        </div>
-      </div>
-      <div class="player-item">
-        <div class="player-avatar">🎯</div>
-        <div class="player-info-item">
-          <div class="player-name-item">María García</div>
-          <div class="player-amount">$64,000</div>
-        </div>
-      </div>
-      <div class="player-item">
-        <div class="player-avatar">⭐</div>
-        <div class="player-info-item">
-          <div class="player-name-item">Carlos López</div>
-          <div class="player-amount">$32,000</div>
-        </div>
-      </div>
-      <div class="player-item">
-        <div class="player-avatar">🔥</div>
-        <div class="player-info-item">
-          <div class="player-name-item">Ana Martín</div>
-          <div class="player-amount">$16,000</div>
-        </div>
-      </div>
-      <div class="player-item">
-        <div class="player-avatar">💎</div>
-        <div class="player-info-item">
-          <div class="player-name-item">Pedro Ruiz</div>
-          <div class="player-amount">$8,000</div>
-        </div>
-      </div>
-      <div class="player-item">
-        <div class="player-avatar">🌟</div>
-        <div class="player-info-item">
-          <div class="player-name-item">Laura Silva</div>
-          <div class="player-amount">$4,000</div>
-        </div>
-      </div>
-      <div class="player-item">
-        <div class="player-avatar">🎪</div>
-        <div class="player-info-item">
-          <div class="player-name-item">Diego Torres</div>
-          <div class="player-amount">$2,000</div>
-        </div>
-      </div>
-      <div class="player-item">
-        <div class="player-avatar">🚀</div>
-        <div class="player-info-item">
-          <div class="player-name-item">Sofia Vega</div>
-          <div class="player-amount">$1,000</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Escalera de premios -->
-    <div class="prize-ladder" id="prizeLadder" style="display: none">
-      <!-- Los premios se generarán dinámicamente -->
-    </div>
-
     <script>
-      // Estado del juego
+      // Estado del juego simplificado
       let gameState = {
-        sessionId: null,
         playerName: "",
-        currentQuestionId: null,
-        correctAnswer: "B", // París es la respuesta correcta
-        isSpectator: false, // Flag para modo espectador
-        waitingForResult: false, // Flag para indicar que estamos esperando que el admin revele el resultado
-        selectedOption: null, // Opción seleccionada por el jugador
+        currentQuestionIndex: 0,
+        questions: [],
+        selectedOption: null,
+        score: 1000,
         lifelinesUsed: {
           fiftyFifty: false,
           audience: false,
         },
-        questionData: {
-          A: { text: "Madrid", eliminated: false },
-          B: { text: "París", eliminated: false },
-          C: { text: "Londres", eliminated: false },
-          D: { text: "Roma", eliminated: false },
-        },
-        questions: [],
-        currentQuestionIndex: 0,
       };
 
-      // Sistema de diálogos animados
-      function showDialog(options = {}) {
-        const {
-          icon = "ℹ️",
-          title = "Información",
-          message = "",
-          type = "info", // info, success, warning, error
-          buttons = [{ text: "Aceptar", action: null, primary: true }],
-          autoClose = false,
-          duration = 3000,
-        } = options;
+      // Premios por pregunta
+      const prizes = [1000, 2000, 5000, 10000, 25000, 50000, 100000, 1000000];
 
-        const overlay = document.getElementById("dialogOverlay");
-        const dialogIcon = document.getElementById("dialogIcon");
-        const dialogTitle = document.getElementById("dialogTitle");
-        const dialogMessage = document.getElementById("dialogMessage");
-        const dialogButtons = document.getElementById("dialogButtons");
-
-        // Configurar icono según el tipo
-        const icons = {
-          info: "ℹ️",
-          success: "✅",
-          warning: "⚠️",
-          error: "❌",
-          question: "❓",
-          celebration: "🎉",
-        };
-
-        dialogIcon.textContent = icon || icons[type] || icons.info;
-        dialogTitle.textContent = title;
-        dialogMessage.textContent = message;
-
-        // Limpiar botones anteriores
-        dialogButtons.innerHTML = "";
-
-        // Crear botones
-        buttons.forEach((button, index) => {
-          const btn = document.createElement("button");
-          btn.className = `dialog-btn ${
-            button.primary ? "primary" : "secondary"
-          }`;
-          btn.textContent = button.text;
-          btn.onclick = () => {
-            if (button.action) button.action();
-            hideDialog();
-          };
-          dialogButtons.appendChild(btn);
-        });
-
-        // Mostrar diálogo
-        overlay.classList.add("show");
-
-        // Auto cerrar si se especifica
-        if (autoClose) {
-          setTimeout(() => {
-            hideDialog();
-          }, duration);
-        }
-
-        return overlay;
-      }
-
-      function hideDialog() {
-        const overlay = document.getElementById("dialogOverlay");
-        overlay.classList.remove("show");
-      }
-
-      // Funciones de conveniencia para diferentes tipos de diálogo
-      function showInfo(title, message, autoClose = false) {
-        return showDialog({
-          type: "info",
-          title,
-          message,
-          autoClose,
-          buttons: [{ text: "Entendido", primary: true }],
-        });
-      }
-
-      function showSuccess(title, message, autoClose = true) {
-        return showDialog({
-          type: "success",
-          title,
-          message,
-          autoClose,
-          duration: 2500,
-        });
-      }
-
-      function showError(title, message) {
-        return showDialog({
-          type: "error",
-          title,
-          message,
-          buttons: [{ text: "Entendido", primary: true }],
-        });
-      }
-
-      function showConfirm(title, message, onConfirm, onCancel = null) {
-        return showDialog({
-          type: "question",
-          title,
-          message,
-          buttons: [
-            { text: "Confirmar", action: onConfirm, primary: true },
-            { text: "Cancelar", action: onCancel, primary: false },
-          ],
-        });
-      }
-
-      // Animaciones de transición de preguntas
-      function animateQuestionTransition(callback) {
-        const questionContainer = document.querySelector(".question-container");
-        if (!questionContainer) return;
-
-        questionContainer.classList.add("transitioning");
-
-        setTimeout(() => {
-          if (callback) callback();
-          questionContainer.classList.remove("transitioning");
-          questionContainer.classList.add("question-appear");
-
-          // Animar opciones una por una
-          const options = document.querySelectorAll(".option");
-          options.forEach((option, index) => {
-            setTimeout(() => {
-              option.classList.add("option-reveal");
-            }, index * 150);
-          });
-
-          setTimeout(() => {
-            questionContainer.classList.remove("question-appear");
-            options.forEach((option) => {
-              option.classList.remove("option-reveal");
-            });
-          }, 1000);
-        }, 600);
-      }
-
-      // Cargar nombre guardado al iniciar
-      window.onload = function () {
-        const savedName = localStorage.getItem("quizPlayerName");
-        if (savedName) {
-          document.getElementById("playerName").value = savedName;
-        }
-
-        // Conectar WebSocket del juego
-        connectGameWebSocket();
-
-        // Cargar preguntas
-        loadQuestions();
-
-        // Cargar tabla de posiciones inicial
-        loadPlayersTable();
-
-        // Verificar estado inicial del juego
-        checkInitialGameState();
-      };
-
-      async function checkInitialGameState() {
-        try {
-          const response = await fetch("/api/game/state");
-          const data = await response.json();
-
-          if (data.success && data.data.gameState) {
-            const gameState = data.data.gameState;
-            if (!gameState.isActive) {
-              console.log("⏳ El juego no está activo actualmente");
-              // Mostrar mensaje sutil en la UI
-              updateGameStatusMessage(gameState.message);
-            } else {
-              console.log("✅ El juego está activo");
-              updateGameStatusMessage(
-                "¡El juego está activo! Puedes ingresar tu nombre y jugar."
-              );
-            }
-          }
-        } catch (error) {
-          console.error(
-            "❌ Error verificando estado inicial del juego:",
-            error
-          );
-        }
-      }
-
-      function updateGameStatusMessage(message) {
-        // Crear o actualizar mensaje de estado del juego
-        let statusElement = document.getElementById("gameStatusMessage");
-        if (!statusElement) {
-          statusElement = document.createElement("div");
-          statusElement.id = "gameStatusMessage";
-          statusElement.style.cssText = `
-            text-align: center;
-            padding: 10px 20px;
-            margin: 20px auto;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            max-width: 400px;
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            color: #ffd700;
-          `;
-
-          const welcomeScreen = document.getElementById("welcomeScreen");
-          const nameInput = welcomeScreen.querySelector(".name-input");
-          nameInput.parentNode.insertBefore(statusElement, nameInput);
-        }
-
-        statusElement.textContent = message;
-      }
-
-      async function loadQuestions() {
-        try {
-          console.log("🔄 Cargando preguntas desde API...");
-          const response = await fetch("/api/questions");
-          const data = await response.json();
-
-          if (data.success && data.data.questions) {
-            gameState.questions = data.data.questions;
-            console.log(`✅ ${gameState.questions.length} preguntas cargadas`);
-
-            // Mostrar las primeras preguntas para debug
-            console.log(
-              "🔍 Primeras 3 preguntas:",
-              gameState.questions.slice(0, 3)
-            );
-          } else {
-            console.error("❌ Error cargando preguntas:", data.error);
-          }
-        } catch (error) {
-          console.error("❌ Error de conexión:", error);
-        }
-      }
-
-      async function loadPlayersTable() {
-        try {
-          const response = await fetch("/api/sessions/active");
-          const data = await response.json();
-
-          if (data.success && data.data.sessions) {
-            updatePlayersTable(data.data.sessions);
-            console.log(
-              `✅ Tabla de jugadores activos cargada con ${data.data.sessions.length} jugadores`
-            );
-          } else {
-            console.error("❌ Error cargando tabla de jugadores:", data.error);
-          }
-        } catch (error) {
-          console.error("❌ Error de conexión para tabla de jugadores:", error);
-        }
-      }
-
-      function updatePlayersTable(activeSessions) {
-        const playersTable = document.getElementById("playersTable");
-
-        // Limpiar contenido actual excepto el título
-        const titleElement = playersTable.querySelector(".players-title");
-        playersTable.innerHTML = "";
-        if (titleElement) {
-          playersTable.appendChild(titleElement);
-        } else {
-          const newTitle = document.createElement("div");
-          newTitle.className = "players-title";
-          newTitle.textContent = "JUGADORES ACTIVOS";
-          playersTable.appendChild(newTitle);
-        }
-
-        // Generar avatares únicos para cada jugador
-        const avatars = [
-          "🎯",
-          "⭐",
-          "🔥",
-          "💎",
-          "🌟",
-          "🎪",
-          "🚀",
-          "👤",
-          "🎨",
-          "🎵",
-          "🌊",
-          "⚡",
-          "🎭",
-          "🦄",
-          "🔮",
-        ];
-
-        // Agregar jugadores activos ordenados por premio actual
-        const sortedSessions = activeSessions
-          .filter(
-            (session) =>
-              session.gameStatus === "active" ||
-              session.gameStatus === "eliminated"
-          )
-          .sort((a, b) => b.totalPrize - a.totalPrize)
-          .slice(0, 8);
-
-        sortedSessions.forEach((session, index) => {
-          const playerItem = document.createElement("div");
-          playerItem.className = "player-item";
-
-          // Resaltar al jugador actual
-          if (session.playerName === gameState.playerName) {
-            playerItem.classList.add("current-player");
-          }
-
-          // Asignar avatar único
-          const avatar = avatars[index % avatars.length];
-
-          // Determinar estado visual del jugador
-          let statusIndicator = "";
-          if (session.gameStatus === "eliminated") {
-            statusIndicator = "👁️"; // Modo espectador
-          } else if (session.gameStatus === "active") {
-            statusIndicator = "🎮"; // Jugando activamente
-          }
-
-          playerItem.innerHTML = `
-            <div class="player-avatar">${avatar}</div>
-            <div class="player-info-item">
-              <div class="player-name-item">${
-                session.playerName
-              } ${statusIndicator}</div>
-              <div class="player-amount">$${session.totalPrize.toLocaleString()}</div>
-            </div>
-          `;
-
-          playersTable.appendChild(playerItem);
-        });
-
-        // Si no hay jugadores activos, mostrar mensaje
-        if (sortedSessions.length === 0) {
-          const emptyMessage = document.createElement("div");
-          emptyMessage.className = "player-item";
-          emptyMessage.style.justifyContent = "center";
-          emptyMessage.innerHTML =
-            '<div style="color: #ccc;">No hay jugadores en la partida</div>';
-          playersTable.appendChild(emptyMessage);
-        }
-      }
-
-      // Configurar actualización periódica de la tabla de jugadores
-      let playersTableInterval;
-      let gameWebSocket = null;
-
-      function connectGameWebSocket() {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-
-        gameWebSocket = new WebSocket(wsUrl);
-
-        gameWebSocket.onopen = function () {
-          console.log("✅ WebSocket del juego conectado");
-        };
-
-        gameWebSocket.onmessage = function (event) {
-          try {
-            const message = JSON.parse(event.data);
-            handleGameWebSocketMessage(message);
-          } catch (error) {
-            console.error(
-              "❌ Error procesando mensaje WebSocket del juego:",
-              error
-            );
-          }
-        };
-
-        gameWebSocket.onclose = function () {
-          console.log("🔌 WebSocket del juego desconectado");
-          // No reconectar automáticamente durante el juego para evitar interferencias
-        };
-
-        gameWebSocket.onerror = function (error) {
-          console.error("❌ Error WebSocket del juego:", error);
-        };
-      }
-
-      function handleGameWebSocketMessage(message) {
-        switch (message.type) {
-          case "gameState":
-            handleGameStateChange(message.data);
-            break;
-          case "nextQuestion":
-            handleNextQuestionFromAdmin(message.data);
-            break;
-          case "revealAnswer":
-            handleRevealAnswerFromAdmin(message.data);
-            break;
-          default:
-            console.log(
-              "📨 Mensaje WebSocket del juego no reconocido:",
-              message
-            );
-        }
-
-        // Actualizar tabla de jugadores cuando hay cambios de estado
-        loadPlayersTable();
-      }
-
-      function handleGameStateChange(newGameState) {
-        console.log("🎮 Cambio de estado del juego:", newGameState.message);
-
-        // Actualizar mensaje de estado en la UI
-        updateGameStatusMessage(newGameState.message);
-
-        if (newGameState.isActive) {
-          // Juego iniciado por el admin
-          console.log("🟢 El juego ha sido iniciado por el administrador");
-          updateGameStatusMessage(
-            "¡El juego ha sido iniciado! Ahora puedes ingresar y jugar."
-          );
-        } else {
-          // Juego terminado por el admin
-          console.log("🔴 El juego ha sido terminado por el administrador");
-          updateGameStatusMessage(
-            "El juego ha sido detenido por el administrador. Todos los datos han sido limpiados."
-          );
-
-          // Si el jugador está en una sesión activa, mostrar mensaje y redirigir
-          if (gameState.sessionId) {
-            stopPlayersTableUpdates();
-
-            // Limpiar estado local del juego
-            gameState = {
-              questions: [],
-              currentQuestionIndex: 0,
-              currentQuestionId: null,
-              sessionId: null,
-              playerName: null,
-              isSpectator: false,
-              waitingForResult: false,
-              selectedOption: null,
-              correctAnswer: null,
-              lifelinesUsed: {
-                fiftyFifty: false,
-                audience: false,
-                phone: false,
-              },
-            };
-
-            showInfo(
-              "🛑 Partida Terminada",
-              "La partida ha sido terminada por el administrador. Todos los datos han sido limpiados. Regresando al inicio...",
-              true
-            );
-            setTimeout(() => {
-              location.reload();
-            }, 3000);
-          }
-        }
-      }
-
-      function handleNextQuestionFromAdmin(data) {
-        console.log(
-          "➡️ El administrador ha avanzado a la siguiente pregunta:",
-          data.message
-        );
-
-        // Limpiar estado de espera de la pregunta anterior
-        gameState.waitingForResult = false;
-        gameState.selectedOption = null;
-
-        // Mostrar mensaje al usuario
-        showInfo(
-          "➡️ Nueva Pregunta",
-          data.message + ". Avanzando a la siguiente pregunta...",
-          true
-        );
-
-        // Si el jugador está en el juego, avanzar automáticamente
-        if (gameState.sessionId && gameState.currentQuestionIndex >= 0) {
-          gameState.currentQuestionIndex++;
-          animateQuestionTransition(() => {
-            loadCurrentQuestion();
-          });
-        }
-      }
-
-      function handleRevealAnswerFromAdmin(data) {
-        console.log(
-          "💡 El administrador ha revelado la respuesta:",
-          data.message
-        );
-
-        // Si estábamos esperando el resultado, evaluar si la respuesta fue correcta
-        if (gameState.waitingForResult && gameState.selectedOption) {
-          const isCorrect =
-            gameState.selectedOption === gameState.correctAnswer;
-
-          if (isCorrect) {
-            showSuccess(
-              "🎉 ¡CORRECTO!",
-              `Tu respuesta "${gameState.selectedOption}" fue la correcta. La respuesta era: ${gameState.correctAnswer}`
-            );
-
-            // Si no está en modo espectador, avanzar a la siguiente pregunta
-            if (!gameState.isSpectator) {
-              setTimeout(() => {
-                gameState.currentQuestionIndex++;
-                loadCurrentQuestion();
-              }, 3000);
-            }
-          } else {
-            showError(
-              "❌ INCORRECTO",
-              `Tu respuesta "${gameState.selectedOption}" no fue correcta. La respuesta correcta era: ${gameState.correctAnswer}`
-            );
-          }
-
-          // Limpiar estado de espera
-          gameState.waitingForResult = false;
-          gameState.selectedOption = null;
-        } else {
-          // Solo mostrar el mensaje del admin si no estábamos esperando resultado
-          showInfo("💡 Respuesta Revelada", data.message, true);
-        }
-
-        // Si estamos en una pregunta activa, resaltar la respuesta correcta
-        if (gameState.correctAnswer) {
-          const options = document.querySelectorAll(".option");
-          options.forEach((option) => {
-            const optionLetter = option.getAttribute("data-option");
-            if (optionLetter === gameState.correctAnswer) {
-              option.style.background =
-                "linear-gradient(45deg, #4caf50, #45a049)";
-              option.style.color = "white";
-              option.style.fontWeight = "bold";
-            }
-          });
-
-          // Si no estábamos esperando resultado, mostrar mensaje específico con la respuesta
-          if (!gameState.waitingForResult) {
-            setTimeout(() => {
-              showInfo(
-                "💡 Respuesta Correcta",
-                `La respuesta correcta es: ${gameState.correctAnswer}`,
-                true
-              );
-            }, 1000);
-          }
-        }
-
-        // Rehabilitar las opciones para la siguiente pregunta (si no está en modo espectador)
-        if (!gameState.isSpectator) {
-          setTimeout(() => {
-            const allOptions = document.querySelectorAll(".option");
-            allOptions.forEach((opt) => {
-              opt.style.pointerEvents = "auto";
-              opt.style.opacity = "1";
-            });
-          }, 2000);
-        }
-      }
-
-      function enterSpectatorMode() {
-        console.log("👁️ Entrando en modo espectador...");
-
-        // Mostrar mensaje al usuario
-        showInfo(
-          "👁️ Modo Espectador",
-          "Ahora estás en modo espectador. Podrás ver las preguntas y respuestas correctas pero no podrás participar.",
-          true
-        );
-
-        // Marcar como espectador
-        gameState.isSpectator = true;
-
-        // Deshabilitar todas las opciones de respuesta
-        const options = document.querySelectorAll(".option");
-        options.forEach((option) => {
-          option.style.opacity = "0.5";
-          option.style.pointerEvents = "none";
-          option.style.cursor = "not-allowed";
-        });
-
-        // Deshabilitar botones de comodines
-        const lifelineButtons = document.querySelectorAll(".lifeline-btn");
-        lifelineButtons.forEach((btn) => {
-          btn.disabled = true;
-          btn.style.opacity = "0.5";
-          btn.style.cursor = "not-allowed";
-        });
-
-        // Agregar mensaje de espectador en la interfaz
-        const questionArea = document.querySelector(".question-area");
-        if (questionArea) {
-          let spectatorMessage = document.getElementById("spectatorMessage");
-          if (!spectatorMessage) {
-            spectatorMessage = document.createElement("div");
-            spectatorMessage.id = "spectatorMessage";
-            spectatorMessage.style.cssText = `
-              background: rgba(255, 165, 0, 0.1);
-              border: 2px solid #ffa500;
-              border-radius: 10px;
-              padding: 10px 15px;
-              margin: 10px 0;
-              text-align: center;
-              color: #ffa500;
-              font-weight: bold;
-              font-size: 0.9rem;
-            `;
-            spectatorMessage.textContent =
-              "👁️ MODO ESPECTADOR - Solo puedes observar";
-            questionArea.insertBefore(
-              spectatorMessage,
-              questionArea.firstChild
-            );
-          }
-        }
-
-        // Continuar viendo el juego pero sin poder participar
-        // El jugador seguirá recibiendo actualizaciones de preguntas por WebSocket
-        console.log("✅ Modo espectador activado");
-      }
-
-      async function startPlayersTableUpdates() {
-        // Actualizar cada 10 segundos
-        playersTableInterval = setInterval(loadPlayersTable, 10000);
-      }
-
-      function stopPlayersTableUpdates() {
-        if (playersTableInterval) {
-          clearInterval(playersTableInterval);
-          playersTableInterval = null;
-        }
-      }
-
+      // Iniciar el juego
       async function startGame() {
         const playerName = document.getElementById("playerName").value.trim();
-
-        if (playerName === "") {
-          showError("❌ Error", "Por favor, ingresa tu nombre para comenzar");
+        if (!playerName) {
+          alert("Por favor ingresa tu nombre");
           return;
         }
 
-        // Guardar nombre en localStorage
-        localStorage.setItem("quizPlayerName", playerName);
         gameState.playerName = playerName;
 
-        try {
-          // 🔍 VERIFICAR ESTADO DEL JUEGO ANTES DE CREAR SESIÓN
-          const gameStateResponse = await fetch("/api/game/state");
-          const gameStateData = await gameStateResponse.json();
+        // Cargar preguntas
+        await loadQuestions();
 
-          if (
-            !gameStateData.success ||
-            !gameStateData.data.gameState.isActive
-          ) {
-            showInfo(
-              "⏳ Juego Inactivo",
-              "El juego no está activo. Espera a que el administrador inicie la partida."
-            );
-            return;
-          }
-
-          // Crear o recuperar sesión
-          const response = await fetch("/api/sessions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              playerName: playerName,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (data.success && data.data.session) {
-            gameState.sessionId = data.data.session.id;
-
-            // Cargar estado de la sesión
-            loadSessionState(data.data.session);
-
-            console.log(`✅ Sesión creada/recuperada: ${gameState.sessionId}`);
-
-            // Proceder con el juego
-            proceedToGame(playerName);
-          } else {
-            console.error("❌ Error creando sesión:", data.error);
-            showError(
-              "❌ Error",
-              `${data.error || "Error creando sesión. Inténtalo de nuevo."}`
-            );
-            return;
-          }
-        } catch (error) {
-          console.error("❌ Error de conexión:", error);
-          showError(
-            "❌ Error de Conexión",
-            "Error de conexión. Verifica tu internet y que el servidor esté funcionando."
-          );
-          return;
-        }
-      }
-
-      function proceedToGame(playerName) {
-        // Ocultar pantalla de bienvenida
+        // Mostrar pantalla del juego
         document.getElementById("welcomeScreen").style.display = "none";
+        document.getElementById("gameScreen").style.display = "block";
+        document.getElementById("playerNameDisplay").textContent = playerName;
 
-        // Mostrar pantalla de espera
-        document.getElementById("waitingScreen").style.display = "block";
-        document.getElementById("waitingPlayerName").textContent = playerName;
-
-        // Iniciar actualizaciones de tabla de posiciones
-        startPlayersTableUpdates();
-
-        // Esperar 2 segundos y luego mostrar el juego
-        setTimeout(async () => {
-          // Ocultar pantalla de espera
-          document.getElementById("waitingScreen").style.display = "none";
-
-          // Mostrar pantalla del juego
-          document.getElementById("gameScreen").style.display = "block";
-          document.getElementById("prizeLadder").style.display = "block";
-          document.getElementById("playersTable").style.display = "block";
-
-          // Inicializar escalera de premios
-          updatePrizeLadder();
-
-          // Mostrar nombre del jugador
-          const playerNameDisplay =
-            document.getElementById("playerNameDisplay");
-          const currentPlayerName =
-            document.getElementById("currentPlayerName");
-
-          if (playerNameDisplay) {
-            playerNameDisplay.textContent = playerName;
-          }
-          if (currentPlayerName) {
-            currentPlayerName.textContent = playerName;
-          }
-
-          // 🔍 ASEGURAR QUE LAS PREGUNTAS ESTÉN CARGADAS ANTES DE CONTINUAR
-          if (!gameState.questions || gameState.questions.length === 0) {
-            console.log("⏳ Cargando preguntas antes de comenzar...");
-            await loadQuestions();
-          }
-
-          if (!gameState.questions || gameState.questions.length === 0) {
-            showError(
-              "❌ Error",
-              "No se pudieron cargar las preguntas. Recarga la página."
-            );
-            return;
-          }
-
-          // Cargar primera pregunta
-          loadCurrentQuestion();
-        }, 2000);
+        // Cargar primera pregunta
+        loadCurrentQuestion();
       }
 
-      function loadSessionState(session) {
-        // Cargar comodines usados
-        gameState.lifelinesUsed = {
-          fiftyFifty: session.lifelinesUsed.fiftyFifty,
-          audience: session.lifelinesUsed.audience,
-        };
-
-        // Actualizar UI de comodines
-        if (gameState.lifelinesUsed.fiftyFifty) {
-          document.getElementById("fiftyFiftyLifeline").classList.add("used");
+      // Cargar preguntas desde la API
+      async function loadQuestions() {
+        try {
+          const response = await fetch("/api/questions");
+          if (!response.ok) {
+            throw new Error("Error cargando preguntas");
+          }
+          const data = await response.json();
+          gameState.questions = data.questions || [];
+          console.log(`✅ ${gameState.questions.length} preguntas cargadas`);
+        } catch (error) {
+          console.error("❌ Error cargando preguntas:", error);
+          alert("Error cargando preguntas. Por favor recarga la página.");
         }
-        if (gameState.lifelinesUsed.audience) {
-          document.getElementById("audienceLifeline").classList.add("used");
-        }
-
-        // Cargar pregunta actual
-        gameState.currentQuestionIndex = session.currentQuestion - 1;
-
-        console.log(
-          `📊 Estado cargado: Pregunta ${session.currentQuestion}, Premio: $${session.totalPrize}`
-        );
       }
 
-      async function loadCurrentQuestion() {
-        // 🔍 VALIDAR QUE TENGAMOS PREGUNTAS CARGADAS
-        if (!gameState.questions || gameState.questions.length === 0) {
-          console.log("⏳ Esperando a que se carguen las preguntas...");
-          try {
-            await loadQuestions();
-            if (!gameState.questions || gameState.questions.length === 0) {
-              showError(
-                "❌ Error",
-                "No se pudieron cargar las preguntas. Verifica la conexión al servidor."
-              );
-              return;
-            }
-          } catch (error) {
-            console.error("❌ Error cargando preguntas:", error);
-            showError(
-              "❌ Error",
-              "Error cargando preguntas. Recarga la página."
-            );
-            return;
-          }
-        }
-
+      // Cargar pregunta actual
+      function loadCurrentQuestion() {
         if (gameState.currentQuestionIndex >= gameState.questions.length) {
-          showSuccess(
-            "🎉 ¡Felicidades!",
-            "Has completado todas las preguntas disponibles."
-          );
+          endGame(true); // Ganó el juego
           return;
         }
 
         const question = gameState.questions[gameState.currentQuestionIndex];
-
-        // 🔍 VALIDAR QUE LA PREGUNTA EXISTE
-        if (!question) {
-          console.error(
-            `❌ Pregunta no encontrada en índice ${gameState.currentQuestionIndex}`
-          );
-          showError("❌ Error", "Error cargando la pregunta. Reintentando...");
-
-          // Reintentar cargar preguntas
-          try {
-            await loadQuestions();
-            if (gameState.questions[gameState.currentQuestionIndex]) {
-              loadCurrentQuestion(); // Recursivo
-              return;
-            }
-          } catch (error) {
-            console.error("❌ Error en reintento:", error);
-          }
-
-          showError(
-            "❌ Error",
-            "No se pudo cargar la pregunta. Recarga la página."
-          );
-          return;
-        }
-
-        // 🔍 VALIDAR QUE LA PREGUNTA TIENE UN ID VÁLIDO
-        if (!question.id || question.id <= 0) {
-          console.error(`❌ Pregunta sin ID válido:`, question);
-          showError("❌ Error", "Pregunta sin ID válido. Recarga la página.");
-          return;
-        }
-
-        gameState.currentQuestionId = question.id;
-        gameState.correctAnswer = question.correctAnswer;
-
-        console.log(
-          `🎯 Pregunta cargada - ID: ${question.id}, Índice: ${gameState.currentQuestionIndex}`
-        );
-        console.log(`🔍 Pregunta completa:`, question);
+        const questionNum = gameState.currentQuestionIndex + 1;
 
         // Actualizar UI
-        document.querySelector(".question-number").textContent = `Pregunta ${
-          gameState.currentQuestionIndex + 1
-        } de ${gameState.questions.length}`;
-        document.querySelector(".question-text").textContent =
-          question.question;
+        document.getElementById("questionNumber").textContent = questionNum;
+        document.getElementById("currentQuestionNum").textContent = questionNum;
+        document.getElementById("currentPrize").textContent =
+          prizes[gameState.currentQuestionIndex].toLocaleString();
+        document.getElementById("questionText").textContent = question.question;
+
+        // Limpiar selección previa
+        gameState.selectedOption = null;
 
         // Cargar opciones
-        const options = document.querySelectorAll(".option");
-        const letters = ["A", "B", "C", "D"];
+        loadOptions(question.options);
 
-        options.forEach((option, index) => {
-          const letter = letters[index];
+        // Ocultar botón siguiente
+        document.getElementById("nextBtn").style.display = "none";
+      }
+
+      // Cargar opciones de la pregunta
+      function loadOptions(options) {
+        const container = document.getElementById("optionsContainer");
+        container.innerHTML = "";
+
+        Object.keys(options).forEach((letter) => {
+          const option = document.createElement("div");
+          option.className = "option";
           option.setAttribute("data-option", letter);
+          option.onclick = () => selectOption(letter);
 
-          // 🔍 VALIDAR QUE LAS OPCIONES EXISTEN
-          const optionText =
-            question.options && question.options[letter]
-              ? question.options[letter]
-              : `Opción ${letter}`;
+          option.innerHTML = `
+            <div class="option-letter">${letter}</div>
+            <div>${options[letter]}</div>
+          `;
 
-          option.querySelector("div:last-child").textContent = optionText;
-
-          // Resetear estado
-          option.classList.remove("eliminated");
-          option.style.background =
-            "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)";
-          option.style.borderColor = "#4a4a4a";
-          option.style.color = "white";
-
-          // Rehabilitar opciones para nueva pregunta (si no está en modo espectador)
-          if (!gameState.isSpectator) {
-            option.style.pointerEvents = "auto";
-            option.style.opacity = "1";
-          }
-
-          // Actualizar gameState
-          gameState.questionData[letter] = {
-            text: optionText,
-            eliminated: false,
-          };
+          container.appendChild(option);
         });
-
-        console.log(
-          `✅ Pregunta ${gameState.currentQuestionIndex + 1} cargada: ${
-            question.question
-          }`
-        );
-
-        // Actualizar escalera de premios
-        updatePrizeLadder();
       }
 
-      function updatePrizeLadder() {
-        const prizeLadder = document.getElementById("prizeLadder");
-        if (!prizeLadder) return;
+      // Seleccionar opción
+      function selectOption(letter) {
+        if (gameState.selectedOption) return; // Ya seleccionó
 
-        // Definir los premios en orden ascendente (de menor a mayor)
-        const prizeAmounts = [
-          100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000,
-          125000, 250000, 500000, 1000000,
-        ];
+        gameState.selectedOption = letter;
+        const question = gameState.questions[gameState.currentQuestionIndex];
+        const isCorrect = letter === question.correctAnswer;
 
-        // Limpiar escalera actual
-        prizeLadder.innerHTML = "";
-
-        // Crear elementos de premio en orden descendente (más alto primero)
-        prizeAmounts
-          .slice()
-          .reverse()
-          .forEach((amount, index) => {
-            const prizeItem = document.createElement("div");
-            prizeItem.className = "prize-item";
-
-            // El índice real de la pregunta (0-based) vs display (1-based)
-            const questionNumber = gameState.currentQuestionIndex + 1;
-            const prizeIndex = prizeAmounts.length - index; // 15, 14, 13... 1
-
-            // Marcar como actual si corresponde a la pregunta actual
-            if (prizeIndex === questionNumber) {
-              prizeItem.classList.add("current");
-            }
-
-            // Marcar como ganado si está por debajo de la pregunta actual
-            if (prizeIndex < questionNumber) {
-              prizeItem.classList.add("won");
-            }
-
-            prizeItem.textContent = `$${amount.toLocaleString()}`;
-            prizeLadder.appendChild(prizeItem);
-          });
-
-        console.log(
-          `🎯 Escalera de premios actualizada para pregunta ${
-            gameState.currentQuestionIndex + 1
-          }`
+        // Marcar opción seleccionada
+        const selectedElement = document.querySelector(
+          `[data-option="${letter}"]`
         );
-      }
+        selectedElement.classList.add("selected");
 
-      async function useFiftyFifty() {
-        // Verificar si está en modo espectador
-        if (gameState.isSpectator) {
-          showInfo(
-            "👁️ Modo Espectador",
-            "Estás en modo espectador. No puedes usar comodines."
-          );
-          return;
-        }
-
-        // Verificar si ya se usó este comodín
-        if (gameState.lifelinesUsed.fiftyFifty) {
-          showInfo("⚠️ Comodín Usado", "Ya has usado este comodín");
-          return;
-        }
-
-        try {
-          // Marcar comodín como usado en el backend
-          const response = await fetch(
-            `/api/sessions/${gameState.sessionId}/lifeline`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                type: "fiftyFifty",
-              }),
-            }
-          );
-
-          const data = await response.json();
-
-          if (!data.success) {
-            showError("❌ Error", data.error || "Error usando comodín");
-            return;
-          }
-
-          console.log("✅ Comodín 50:50 registrado en el backend");
-        } catch (error) {
-          console.error("❌ Error registrando comodín:", error);
-        }
-
-        // Marcar el comodín como usado localmente
-        gameState.lifelinesUsed.fiftyFifty = true;
-        const lifeline = document.getElementById("fiftyFiftyLifeline");
-        lifeline.classList.add("used");
-
-        // Obtener todas las opciones
-        const options = document.querySelectorAll(".option");
-        const incorrectOptions = [];
-
-        // Encontrar opciones incorrectas
-        options.forEach((option) => {
-          const optionLetter = option.getAttribute("data-option");
-          if (optionLetter !== gameState.correctAnswer) {
-            incorrectOptions.push(option);
-          }
-        });
-
-        // Seleccionar aleatoriamente 2 opciones incorrectas para eliminar
-        const optionsToEliminate = [];
-        const shuffledIncorrect = incorrectOptions.sort(
-          () => 0.5 - Math.random()
-        );
-        optionsToEliminate.push(shuffledIncorrect[0], shuffledIncorrect[1]);
-
-        // Marcar opciones como eliminadas en el estado del juego
-        optionsToEliminate.forEach((option) => {
-          const letter = option.getAttribute("data-option");
-          gameState.questionData[letter].eliminated = true;
-        });
-
-        // Animar la eliminación con delay
-        optionsToEliminate.forEach((option, index) => {
-          setTimeout(() => {
-            // Efecto de highlight antes de eliminar
-            option.style.animation = "highlight 0.5s ease-in-out";
-
-            setTimeout(() => {
-              option.classList.add("eliminated");
-
-              // Sonido de eliminación (simulado con vibración en móviles)
-              if (navigator.vibrate) {
-                navigator.vibrate(100);
-              }
-            }, 500);
-          }, index * 300);
-        });
-
-        // Mostrar mensaje después de la animación
+        // Después de 2 segundos, mostrar resultado
         setTimeout(() => {
-          showSuccess(
-            "50:50 Usado!",
-            "Dos opciones incorrectas han sido eliminadas."
-          );
-        }, 1500);
+          revealAnswer(question.correctAnswer, isCorrect);
+        }, 2000);
       }
 
-      async function useAudiencePoll() {
-        // Verificar si está en modo espectador
-        if (gameState.isSpectator) {
-          showInfo(
-            "👁️ Modo Espectador",
-            "Estás en modo espectador. No puedes usar comodines."
+      // Revelar la respuesta correcta
+      function revealAnswer(correctAnswer, wasCorrect) {
+        // Marcar respuesta correcta
+        const correctElement = document.querySelector(
+          `[data-option="${correctAnswer}"]`
+        );
+        correctElement.classList.add("correct");
+
+        // Si la respuesta fue incorrecta, marcar como tal
+        if (!wasCorrect && gameState.selectedOption) {
+          const incorrectElement = document.querySelector(
+            `[data-option="${gameState.selectedOption}"]`
           );
-          return;
+          incorrectElement.classList.add("incorrect");
         }
 
-        // Verificar si ya se usó este comodín
-        if (gameState.lifelinesUsed.audience) {
-          showInfo("⚠️ Comodín Usado", "Ya has usado este comodín");
-          return;
-        }
+        // Deshabilitar todas las opciones
+        document.querySelectorAll(".option").forEach((option) => {
+          option.style.pointerEvents = "none";
+        });
 
-        try {
-          // Marcar comodín como usado en el backend
-          const response = await fetch(
-            `/api/sessions/${gameState.sessionId}/lifeline`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                type: "audience",
-              }),
+        // Mostrar resultado después de 3 segundos
+        setTimeout(() => {
+          if (wasCorrect) {
+            if (
+              gameState.currentQuestionIndex ===
+              gameState.questions.length - 1
+            ) {
+              // Última pregunta - ganó el juego
+              endGame(true);
+            } else {
+              // Siguiente pregunta
+              const nextBtn = document.getElementById("nextBtn");
+              const btnText = document.getElementById("nextBtnText");
+              const btnIcon = document.getElementById("nextBtnIcon");
+
+              // Texto dinámico según la pregunta
+              const questionNum = gameState.currentQuestionIndex + 2; // +2 porque es la siguiente
+              const totalQuestions = gameState.questions.length;
+
+              if (questionNum === totalQuestions) {
+                btnText.textContent = "¡Pregunta Final!";
+                btnIcon.textContent = " 🏆";
+              } else {
+                btnText.textContent = `Pregunta ${questionNum}/${totalQuestions}`;
+                btnIcon.textContent = " ➤";
+              }
+
+              nextBtn.style.display = "block";
+
+              // Animación de entrada
+              nextBtn.style.opacity = "0";
+              nextBtn.style.transform = "translateY(20px)";
+              setTimeout(() => {
+                nextBtn.style.transition = "all 0.5s ease";
+                nextBtn.style.opacity = "1";
+                nextBtn.style.transform = "translateY(0)";
+              }, 100);
             }
-          );
-
-          const data = await response.json();
-
-          if (!data.success) {
-            showError("❌ Error", data.error || "Error usando comodín");
-            return;
+          } else {
+            // Perdió el juego
+            endGame(false);
           }
+        }, 3000);
+      }
 
-          console.log(
-            "✅ Comodín pregunta al público registrado en el backend"
-          );
-        } catch (error) {
-          console.error("❌ Error registrando comodín:", error);
+      // Siguiente pregunta
+      function nextQuestion() {
+        // Animación del botón antes de cambiar pregunta
+        const nextBtn = document.getElementById("nextBtn");
+        const btnText = document.getElementById("nextBtnText");
+        const btnIcon = document.getElementById("nextBtnIcon");
+
+        btnText.textContent = "Cargando...";
+        btnIcon.textContent = " ⏳";
+        nextBtn.disabled = true;
+        nextBtn.style.pointerEvents = "none";
+
+        setTimeout(() => {
+          gameState.currentQuestionIndex++;
+          gameState.score = prizes[gameState.currentQuestionIndex - 1];
+          loadCurrentQuestion();
+
+          // Restaurar botón para la próxima vez
+          nextBtn.disabled = false;
+          nextBtn.style.pointerEvents = "auto";
+        }, 800);
+      }
+
+      // Terminar juego
+      function endGame(won) {
+        const gameOverScreen = document.getElementById("gameOverScreen");
+        const gameScreen = document.getElementById("gameScreen");
+        const title = document.getElementById("gameOverTitle");
+        const score = document.getElementById("finalScore");
+        const message = document.getElementById("gameOverMessage");
+
+        gameScreen.style.display = "none";
+        gameOverScreen.style.display = "block";
+
+        if (won) {
+          title.textContent = "¡FELICIDADES! ¡GANASTE!";
+          score.textContent = `$${prizes[prizes.length - 1].toLocaleString()}`;
+          message.textContent = "¡Eres el nuevo millonario!";
+        } else {
+          title.textContent = "¡Juego Terminado!";
+          score.textContent = `$${gameState.score.toLocaleString()}`;
+          message.textContent = "No te preocupes, ¡puedes intentarlo de nuevo!";
         }
+      }
 
-        // Marcar el comodín como usado localmente
+      // Reiniciar juego
+      function restartGame() {
+        gameState = {
+          playerName: "",
+          currentQuestionIndex: 0,
+          questions: [],
+          selectedOption: null,
+          score: 1000,
+          lifelinesUsed: {
+            fiftyFifty: false,
+            audience: false,
+          },
+        };
+
+        document.getElementById("gameOverScreen").style.display = "none";
+        document.getElementById("welcomeScreen").style.display = "block";
+        document.getElementById("playerName").value = "";
+
+        // Resetear comodines
+        document.getElementById("fiftyFiftyLifeline").classList.remove("used");
+        document.getElementById("audienceLifeline").classList.remove("used");
+      }
+
+      // Comodín 50:50
+      function useFiftyFifty() {
+        if (gameState.lifelinesUsed.fiftyFifty || gameState.selectedOption)
+          return;
+
+        gameState.lifelinesUsed.fiftyFifty = true;
+        document.getElementById("fiftyFiftyLifeline").classList.add("used");
+
+        const question = gameState.questions[gameState.currentQuestionIndex];
+        const correctAnswer = question.correctAnswer;
+        const options = Object.keys(question.options);
+        const incorrectOptions = options.filter((opt) => opt !== correctAnswer);
+
+        // Eliminar 2 opciones incorrectas aleatoriamente
+        const toEliminate = incorrectOptions
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 2);
+
+        toEliminate.forEach((option) => {
+          const element = document.querySelector(`[data-option="${option}"]`);
+          element.classList.add("eliminated");
+        });
+      }
+
+      // Comodín pregunta al público
+      function useAudiencePoll() {
+        if (gameState.lifelinesUsed.audience || gameState.selectedOption)
+          return;
+
         gameState.lifelinesUsed.audience = true;
-        const lifeline = document.getElementById("audienceLifeline");
-        lifeline.classList.add("used");
+        document.getElementById("audienceLifeline").classList.add("used");
+
+        const question = gameState.questions[gameState.currentQuestionIndex];
+        const correctAnswer = question.correctAnswer;
+
+        // Generar porcentajes simulados (favoreciendo la respuesta correcta)
+        const percentages = generateAudiencePercentages(correctAnswer);
 
         // Mostrar modal
-        document.getElementById("audienceModal").classList.add("show");
-
-        // Generar porcentajes simulados
-        const percentages = generateAudiencePercentages();
-
-        // Animar las barras con delay
-        setTimeout(() => {
-          animateAudienceBars(percentages);
-        }, 300);
+        showAudienceResults(percentages);
       }
 
-      function generateAudiencePercentages() {
-        const availableOptions = [];
+      // Generar porcentajes para pregunta al público
+      function generateAudiencePercentages(correctAnswer) {
+        const options = ["A", "B", "C", "D"];
+        const percentages = {};
 
-        // Solo incluir opciones no eliminadas
-        Object.keys(gameState.questionData).forEach((letter) => {
-          if (!gameState.questionData[letter].eliminated) {
-            availableOptions.push(letter);
-          }
-        });
+        // La respuesta correcta tendrá entre 40-70%
+        const correctPercent = Math.floor(Math.random() * 30) + 40;
+        percentages[correctAnswer] = correctPercent;
 
-        const percentages = { A: 0, B: 0, C: 0, D: 0 };
+        // Distribuir el resto
+        const remaining = 100 - correctPercent;
+        const otherOptions = options.filter((opt) => opt !== correctAnswer);
 
-        if (availableOptions.length === 0) return percentages;
-
-        // Dar mayor probabilidad a la respuesta correcta
-        let remaining = 100;
-
-        if (availableOptions.includes(gameState.correctAnswer)) {
-          // La respuesta correcta tiene entre 45-75% de probabilidad
-          percentages[gameState.correctAnswer] =
-            Math.floor(Math.random() * 31) + 45; // 45-75%
-          remaining -= percentages[gameState.correctAnswer];
-        }
-
-        // Distribuir el resto entre las opciones disponibles (excluyendo la correcta)
-        const otherOptions = availableOptions.filter(
-          (letter) => letter !== gameState.correctAnswer
-        );
-
-        otherOptions.forEach((letter, index) => {
+        let remainingPercent = remaining;
+        otherOptions.forEach((option, index) => {
           if (index === otherOptions.length - 1) {
-            // La última opción obtiene lo que queda
-            percentages[letter] = remaining;
+            percentages[option] = remainingPercent;
           } else {
-            // Distribuir aleatoriamente parte del resto
-            const maxForThis = Math.floor(
-              remaining / (otherOptions.length - index)
+            const percent = Math.floor(
+              Math.random() *
+                (remainingPercent - (otherOptions.length - index - 1))
             );
-            const randomPercent = Math.floor(Math.random() * maxForThis);
-            percentages[letter] = randomPercent;
-            remaining -= randomPercent;
+            percentages[option] = percent;
+            remainingPercent -= percent;
           }
         });
 
         return percentages;
       }
 
-      function animateAudienceBars(percentages) {
-        Object.keys(percentages).forEach((letter, index) => {
-          setTimeout(() => {
-            const bar = document.getElementById(`bar${letter}`);
-            const percentElement = document.getElementById(`percent${letter}`);
+      // Mostrar resultados de pregunta al público
+      function showAudienceResults(percentages) {
+        const modal = document.getElementById("audienceModal");
+        const resultsContainer = document.getElementById("audienceResults");
 
-            // Animar el porcentaje
-            animatePercentage(percentElement, percentages[letter]);
+        resultsContainer.innerHTML = "";
 
-            // Animar la barra
-            bar.style.width = percentages[letter] + "%";
-
-            // Vibración en móviles
-            if (navigator.vibrate) {
-              navigator.vibrate(50);
-            }
-          }, index * 200);
+        Object.keys(percentages).forEach((option) => {
+          const resultItem = document.createElement("div");
+          resultItem.className = "result-item";
+          resultItem.innerHTML = `
+            <div class="result-letter">${option}</div>
+            <div class="result-bar-container">
+              <div class="result-bar" style="width: ${percentages[option]}%"></div>
+            </div>
+            <div class="result-percentage">${percentages[option]}%</div>
+          `;
+          resultsContainer.appendChild(resultItem);
         });
+
+        modal.classList.add("show");
       }
 
-      function animatePercentage(element, targetPercent) {
-        let current = 0;
-        const increment = targetPercent / 30; // 30 frames de animación
-
-        const animation = setInterval(() => {
-          current += increment;
-          if (current >= targetPercent) {
-            current = targetPercent;
-            clearInterval(animation);
-          }
-          element.textContent = Math.floor(current) + "%";
-        }, 50);
-      }
-
+      // Cerrar modal de pregunta al público
       function closeAudienceModal() {
         document.getElementById("audienceModal").classList.remove("show");
       }
 
-      async function selectOption(option, optionLetter) {
-        // Verificar si está en modo espectador
-        if (gameState.isSpectator) {
-          showInfo(
-            "👁️ Modo Espectador",
-            "Estás en modo espectador. No puedes seleccionar respuestas."
-          );
-          return;
-        }
-
-        // Verificar si la opción está eliminada
-        if (option.classList.contains("eliminated")) {
-          return;
-        }
-
-        // Remover selección previa
-        const allOptions = document.querySelectorAll(".option");
-        allOptions.forEach((opt) => {
-          if (!opt.classList.contains("eliminated")) {
-            opt.style.background =
-              "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)";
-            opt.style.borderColor = "#4a4a4a";
-            opt.style.color = "white";
-          }
-        });
-
-        // Marcar opción seleccionada
-        option.style.background =
-          "linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)";
-        option.style.borderColor = "#ffd700";
-        option.style.color = "#000";
-
-        // Enviar respuesta al backend
-        try {
-          // 🔍 VALIDAR QUE TENEMOS UN ID DE PREGUNTA VÁLIDO
-          if (
-            !gameState.currentQuestionId ||
-            gameState.currentQuestionId <= 0
-          ) {
-            console.error(
-              "❌ Error: No hay ID de pregunta válido",
-              gameState.currentQuestionId
-            );
-            console.error("🔍 Estado completo del juego:", gameState);
-            showError(
-              "❌ Error",
-              "No se puede enviar la respuesta. ID de pregunta inválido."
-            );
-            return;
-          }
-
-          console.log(
-            `📤 Enviando respuesta - Pregunta ID: ${gameState.currentQuestionId}, Opción: ${optionLetter}`
-          );
-          console.log(`🔍 Estado actual:`, {
-            currentQuestionId: gameState.currentQuestionId,
-            currentQuestionIndex: gameState.currentQuestionIndex,
-            totalQuestions: gameState.questions
-              ? gameState.questions.length
-              : 0,
-            sessionId: gameState.sessionId,
-          });
-
-          const startTime = Date.now();
-          const response = await fetch(
-            `/api/sessions/${gameState.sessionId}/answer`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                questionId: gameState.currentQuestionId,
-                selectedOption: optionLetter,
-                timeToAnswer: Math.floor((Date.now() - startTime) / 1000),
-              }),
-            }
-          );
-
-          const data = await response.json();
-
-          if (data.success) {
-            const session = data.data.session;
-
-            // Solo confirmar que la respuesta fue enviada, no mostrar el resultado
-            setTimeout(() => {
-              // Simplemente confirmar el envío
-              showSuccess(
-                "✅ Respuesta Enviada",
-                "Tu respuesta ha sido enviada. Espera a que el administrador revele el resultado."
-              );
-
-              // Deshabilitar todas las opciones para evitar cambios
-              const allOptions = document.querySelectorAll(".option");
-              allOptions.forEach((opt) => {
-                opt.style.pointerEvents = "none";
-                opt.style.opacity = "0.7";
-              });
-
-              // Marcar que estamos esperando el resultado
-              gameState.waitingForResult = true;
-              gameState.selectedOption = optionLetter;
-
-              // Si el jugador fue eliminado, entrar en modo espectador después de un tiempo
-              if (session.gameStatus === "eliminated") {
-                setTimeout(() => {
-                  enterSpectatorMode();
-                }, 1000);
-              }
-            }, 500);
-          } else {
-            showError("❌ Error", "Error enviando respuesta: " + data.error);
-          }
-        } catch (error) {
-          console.error("❌ Error enviando respuesta:", error);
-          showError(
-            "❌ Error de Conexión",
-            "Error de conexión al enviar respuesta"
-          );
-        }
-      }
-
-      // Permitir presionar Enter para comenzar el juego
+      // Permitir Enter para enviar nombre
       document
         .getElementById("playerName")
         .addEventListener("keypress", function (e) {

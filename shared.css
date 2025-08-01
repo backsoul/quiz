@@ -1,0 +1,183 @@
+/* Estilos compartidos para el proyecto Quiz Millonario */
+
+/* Variables CSS para colores comunes */
+:root {
+  --gold-primary: #ffd700;
+  --gold-secondary: #ffed4e;
+  --gold-dark: #b8860b;
+  --gold-light: rgba(255, 215, 0, 0.1);
+  --gold-shadow: rgba(255, 215, 0, 0.3);
+  --text-dark: #333;
+  --text-light: #fff;
+  --success-color: #4caf50;
+  --error-color: #f44336;
+  --info-color: #2196f3;
+  --border-radius: 15px;
+  --shadow-light: rgba(0, 0, 0, 0.1);
+  --transition-smooth: all 0.3s ease;
+}
+
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Gradiente dorado principal */
+.gradient-gold {
+  background: linear-gradient(
+    45deg,
+    var(--gold-primary),
+    var(--gold-secondary)
+  );
+}
+
+/* Botón estándar */
+.btn-standard {
+  background: var(--gradient-gold);
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-dark);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 12px 24px;
+  transition: var(--transition-smooth);
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-standard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px var(--gold-shadow);
+}
+
+.btn-standard:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Estados de colores */
+.btn-success {
+  background: linear-gradient(45deg, var(--success-color), #45a049);
+}
+
+.btn-error {
+  background: linear-gradient(45deg, var(--error-color), #d32f2f);
+}
+
+.btn-info {
+  background: linear-gradient(45deg, var(--info-color), #1976d2);
+}
+
+/* Tarjetas comunes */
+.card {
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px var(--shadow-light);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Animaciones comunes */
+@keyframes pulse-gold {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--gold-shadow);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--gold-shadow);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Utilidades de texto */
+.text-center {
+  text-align: center;
+}
+.text-bold {
+  font-weight: bold;
+}
+.text-gold {
+  color: var(--gold-primary);
+}
+
+/* Espaciado */
+.mb-1 {
+  margin-bottom: 10px;
+}
+.mb-2 {
+  margin-bottom: 20px;
+}
+.mb-3 {
+  margin-bottom: 30px;
+}
+.mt-1 {
+  margin-top: 10px;
+}
+.mt-2 {
+  margin-top: 20px;
+}
+.mt-3 {
+  margin-top: 30px;
+}
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.flex-column {
+  flex-direction: column;
+}
+.gap-1 {
+  gap: 10px;
+}
+.gap-2 {
+  gap: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .btn-standard {
+    font-size: 14px;
+    padding: 10px 20px;
+  }
+
+  .card {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+}

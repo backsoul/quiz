@@ -19,15 +19,15 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates tzdata
 
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the binary from builder
 COPY --from=builder /app/main .
 
-# Copy static files needed by the application
-COPY --from=builder /app/index.html .
-COPY --from=builder /app/admin.html .
-COPY --from=builder /app/answers.json .
+# Copiar archivos estáticos al contenedor
+COPY index.html ./
+COPY shared.css ./
+COPY answers.json ./
 
 # Set timezone
 ENV TZ=America/Bogota
