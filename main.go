@@ -4,53 +4,75 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/backsoul/quiz/pkg/handlers"
 	"github.com/backsoul/quiz/pkg/models"
 	"github.com/backsoul/quiz/pkg/redis"
 	"github.com/backsoul/quiz/pkg/services"
-	"github.com/backsoul/quiz/pkg/websocket"
+	hubpkg "github.com/backsoul/quiz/pkg/websocket"
+	ws "github.com/fasthttp/websocket"
 	"github.com/valyala/fasthttp"
 )
 
+// Globals
+var sessionService *services.SessionService
+var sessionHandler *handlers.SessionHandler
+var gameControlHandler *handlers.GameControlHandler
+var hub *hubpkg.Hub
+
 func main() {
-	// Configurar Redis (usar variable de entorno para Docker)
+	// Redis setup
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {
-		redisAddr = "localhost:6379" // Para desarrollo local
+		redisAddr = "localhost:6379"
 	}
-
-	log.Printf("🔌 Conectando a Redis en %s...", redisAddr)
+	log.Printf("Connecting to Redis %s", redisAddr)
 	redisClient := redis.NewRedisClient(redisAddr, "", 0)
 	defer redisClient.Close()
 
-	// Cargar preguntas desde archivo JSON
+	// Load questions from file
 	questions, err := loadQuestions("answers.json")
 	if err != nil {
-		log.Fatalf("Error cargando preguntas: %v", err)
+		log.Fatalf("Error loading questions: %v", err)
 	}
-	log.Printf("✅ Cargadas %d preguntas", len(questions))
+	log.Printf("Loaded %d questions", len(questions))
 
-	// Crear servicios
+	// Services
 	questionService := services.NewQuestionService(redisClient)
-
-	// Cargar preguntas en Redis
-	err = questionService.LoadQuestionsFromFile("answers.json")
-	if err != nil {
-		log.Printf("⚠️ Error cargando preguntas en Redis: %v", err)
+	sessionService = services.NewSessionService(redisClient)
+	gameStateService := services.NewGameStateService(redisClient)
+	
+	// Inyectar dependencia para calcular pregunta actual dinámicamente
+	gameStateService.SetSessionService(sessionService)
+	
+	// Populate Redis
+	if err := questionService.LoadQuestionsFromFile("answers.json"); err != nil {
+		log.Printf("Warn loading to redis: %v", err)
 	}
 
-	// Crear WebSocket Hub
-	hub := websocket.NewHub()
+	// WebSocket hub & handlers
+	hub = hubpkg.NewHub()
 	go hub.Run()
+	sessionHandler = handlers.NewSessionHandler(sessionService, questionService, hub)
+	gameControlHandler = handlers.NewGameControlHandler(gameStateService, sessionService, hub)
 
-	// Configurar servidor
-	server := &fasthttp.Server{
-		Handler: requestRouter,
-		Name:    "Quiz Server",
-	}
+	// Broadcaster
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			sessions, err := sessionService.GetActiveSessions()
+			if err != nil {
+				continue
+			}
+			hub.BroadcastMessage("sessions", sessions)
+		}
+	}()
 
-	log.Printf("🚀 Servidor iniciado en puerto 8080")
-	log.Printf("🎮 Juego disponible en: http://localhost:8080")
+	// Server
+	server := &fasthttp.Server{Handler: requestRouter}
 	log.Fatal(server.ListenAndServe(":8080"))
 }
 
@@ -58,7 +80,73 @@ func requestRouter(ctx *fasthttp.RequestCtx) {
 	path := string(ctx.Path())
 	method := string(ctx.Method())
 
-	// Rutas estáticas
+	// Game API: crear sesión
+	if method == "POST" && path == "/api/sessions" {
+		sessionHandler.CreateSession(ctx)
+		return
+	}
+
+	// Game API: obtener sesión específica
+	if method == "GET" && strings.HasPrefix(path, "/api/sessions/") && !strings.HasSuffix(path, "/answer") && !strings.HasSuffix(path, "/lifeline") {
+		parts := strings.Split(path, "/")
+		if len(parts) == 4 {
+			ctx.SetUserValue("id", parts[3])
+			sessionHandler.GetSession(ctx)
+			return
+		}
+	}
+
+	// Game API: answer/lifeline
+	if method == "POST" && strings.HasPrefix(path, "/api/sessions/") {
+		parts := strings.Split(path, "/")
+		if len(parts) == 5 && parts[4] == "answer" {
+			ctx.SetUserValue("id", parts[3])
+			sessionHandler.SubmitAnswer(ctx)
+			return
+		}
+		if len(parts) == 5 && parts[4] == "lifeline" {
+			ctx.SetUserValue("id", parts[3])
+			sessionHandler.UseLifeline(ctx)
+			return
+		}
+	}
+
+	// Game Control API (Admin endpoints)
+	if method == "POST" && path == "/api/game/start" {
+		gameControlHandler.StartGame(ctx)
+		return
+	}
+	if method == "POST" && path == "/api/game/end" {
+		gameControlHandler.EndGame(ctx)
+		return
+	}
+	if method == "POST" && path == "/api/game/next-question" {
+		gameControlHandler.NextQuestion(ctx)
+		return
+	}
+	if method == "POST" && path == "/api/game/reveal-answer" {
+		gameControlHandler.RevealAnswer(ctx)
+		return
+	}
+	if method == "GET" && path == "/api/game/state" {
+		gameControlHandler.GetGameState(ctx)
+		return
+	}
+	// WebSocket endpoint
+	if method == "GET" && path == "/ws" {
+		upgrader := ws.FastHTTPUpgrader{CheckOrigin: func(ctx *fasthttp.RequestCtx) bool { return true }}
+		upgrader.Upgrade(ctx, func(conn *ws.Conn) {
+			hub.Register(conn)
+			defer hub.Unregister(conn)
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					break
+				}
+			}
+		})
+		return
+	}
+	// Static routes
 	switch path {
 	case "/":
 		serveFile(ctx, "index.html", "text/html")
@@ -66,33 +154,45 @@ func requestRouter(ctx *fasthttp.RequestCtx) {
 	case "/shared.css":
 		serveFile(ctx, "shared.css", "text/css")
 		return
+	case "/admin", "/admin.html":
+		serveFile(ctx, "admin.html", "text/html")
+		return
+	case "/test-data-persistence", "/test-data-persistence.html":
+		serveFile(ctx, "test-data-persistence.html", "text/html")
+		return
 	}
-
-	// API routes
+	// Questions API
 	if method == "GET" && path == "/api/questions" {
-		// Servir preguntas directamente desde el archivo
 		serveQuestionsFromFile(ctx)
 		return
 	}
-
-	if method == "GET" && path == "/api/health" {
+	// Admin sessions
+	if method == "GET" && path == "/api/admin/sessions" {
+		sessions, err := sessionService.GetActiveSessions()
+		if err != nil {
+			ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+			return
+		}
+		data, _ := json.Marshal(sessions)
 		ctx.SetContentType("application/json")
-		ctx.SetBody([]byte(`{"status":"ok","message":"Servidor funcionando correctamente"}`))
+		ctx.SetBody(data)
 		return
 	}
-
-	// 404 para rutas no encontradas
-	ctx.SetStatusCode(fasthttp.StatusNotFound)
-	ctx.SetBody([]byte("404 - Página no encontrada"))
+	// Health
+	if method == "GET" && path == "/api/health" {
+		ctx.SetContentType("application/json")
+		ctx.SetBody([]byte(`{"status":"ok"}`))
+		return
+	}
+	// Fallback
+	ctx.Error("Not found", fasthttp.StatusNotFound)
 }
 
 func serveFile(ctx *fasthttp.RequestCtx, filename, contentType string) {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		ctx.SetStatusCode(fasthttp.StatusNotFound)
-		ctx.SetBody([]byte("⚠️ Archivo no encontrado\n\nEl archivo " + filename + " no existe en el servidor.\n\nAsegúrate de que el archivo esté en el directorio correcto."))
+		ctx.Error("File not found", fasthttp.StatusNotFound)
 		return
 	}
-
 	ctx.SetContentType(contentType)
 	ctx.SendFile(filename)
 }
@@ -100,11 +200,9 @@ func serveFile(ctx *fasthttp.RequestCtx, filename, contentType string) {
 func serveQuestionsFromFile(ctx *fasthttp.RequestCtx) {
 	data, err := os.ReadFile("answers.json")
 	if err != nil {
-		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
-		ctx.SetBody([]byte(`{"success": false, "error": "Error leyendo preguntas"}`))
+		ctx.Error("Error reading questions", fasthttp.StatusInternalServerError)
 		return
 	}
-
 	ctx.SetContentType("application/json")
 	ctx.SetBody(data)
 }
@@ -114,14 +212,11 @@ func loadQuestions(filename string) ([]models.Question, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	var questionsData struct {
+	var qd struct {
 		Questions []models.Question `json:"questions"`
 	}
-
-	if err := json.Unmarshal(data, &questionsData); err != nil {
+	if err := json.Unmarshal(data, &qd); err != nil {
 		return nil, err
 	}
-
-	return questionsData.Questions, nil
+	return qd.Questions, nil
 }

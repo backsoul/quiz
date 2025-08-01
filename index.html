@@ -566,6 +566,9 @@
           fiftyFifty: false,
           audience: false,
         },
+        sessionId: null, // ID de sesión en el servidor
+        isSpectator: false, // Modo espectador cuando pierdes
+        gameActive: false, // Si la partida está activa (controlada por admin)
       };
 
       // Premios por pregunta
@@ -579,7 +582,67 @@
           return;
         }
 
+        // Verificar si el juego está activo
+        try {
+          const gameStateResponse = await fetch("/api/game/state");
+          if (gameStateResponse.ok) {
+            const gameStateData = await gameStateResponse.json();
+            if (!gameStateData.data.gameState.isActive) {
+              const startBtn = document.querySelector(".start-btn");
+              startBtn.textContent =
+                "Esperando que el admin inicie la partida...";
+              startBtn.disabled = true;
+              startBtn.style.opacity = "0.6";
+
+              alert(
+                "El juego no está activo. Espera a que el administrador inicie la partida."
+              );
+              return;
+            }
+          }
+        } catch (err) {
+          console.error("Error verificando estado del juego:", err);
+        }
+
         gameState.playerName = playerName;
+        // Guardar nombre para no pedirlo de nuevo
+        localStorage.setItem("playerName", playerName);
+
+        // Crear sesión en backend
+        const sessionRes = await fetch("/api/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerName }),
+        });
+        if (!sessionRes.ok) {
+          console.error("Error creando sesión", sessionRes.status);
+          alert(
+            "No se pudo iniciar sesión. Por favor recarga y prueba de nuevo."
+          );
+          return;
+        }
+        const sessionData = await sessionRes.json();
+        console.log("Respuesta del servidor:", sessionData);
+
+        // La respuesta viene envuelta en APIResponse.Data
+        if (
+          sessionData.success &&
+          sessionData.data &&
+          sessionData.data.session
+        ) {
+          gameState.sessionId = sessionData.data.session.id;
+          gameState.gameStarted = true;
+
+          // Guardar sessionId en localStorage para persistencia
+          localStorage.setItem("sessionId", gameState.sessionId);
+
+          // Guardar estado completo
+          saveGameState();
+        } else {
+          console.error("Formato de respuesta inválido:", sessionData);
+          alert("Error en formato de respuesta del servidor.");
+          return;
+        }
 
         // Cargar preguntas
         await loadQuestions();
@@ -591,6 +654,9 @@
 
         // Cargar primera pregunta
         loadCurrentQuestion();
+
+        // Guardar estado después de cargar la primera pregunta
+        saveGameState();
       }
 
       // Cargar preguntas desde la API
@@ -611,13 +677,42 @@
 
       // Cargar pregunta actual
       function loadCurrentQuestion() {
+        console.log("📋 EJECUTANDO loadCurrentQuestion()");
+        console.log(
+          `   - currentQuestionIndex: ${gameState.currentQuestionIndex}`
+        );
+        console.log(
+          `   - questions.length: ${gameState.questions?.length || 0}`
+        );
+
+        // Guardar tiempo de inicio de la pregunta para medir respuesta
+        gameState.questionStartTime = Date.now();
+
+        // Verificar si tenemos preguntas cargadas
+        if (!gameState.questions || gameState.questions.length === 0) {
+          console.log("❌ No hay preguntas cargadas, intentando cargar...");
+          showWaitingMessage("Cargando preguntas...");
+          loadQuestions().then(() => {
+            console.log(
+              "✅ Preguntas cargadas, reintentando loadCurrentQuestion"
+            );
+            loadCurrentQuestion();
+          });
+          return;
+        }
+
         if (gameState.currentQuestionIndex >= gameState.questions.length) {
+          console.log("🏆 Jugador completó todas las preguntas");
           endGame(true); // Ganó el juego
           return;
         }
 
         const question = gameState.questions[gameState.currentQuestionIndex];
         const questionNum = gameState.currentQuestionIndex + 1;
+
+        console.log(
+          `📝 Cargando pregunta ${questionNum}: ${question.question}`
+        );
 
         // Actualizar UI
         document.getElementById("questionNumber").textContent = questionNum;
@@ -629,11 +724,16 @@
         // Limpiar selección previa
         gameState.selectedOption = null;
 
+        // Ocultar mensaje de espera
+        hideWaitingMessage();
+
         // Cargar opciones
         loadOptions(question.options);
 
         // Ocultar botón siguiente
         document.getElementById("nextBtn").style.display = "none";
+
+        console.log("✅ Pregunta cargada exitosamente");
       }
 
       // Cargar opciones de la pregunta
@@ -645,6 +745,7 @@
           const option = document.createElement("div");
           option.className = "option";
           option.setAttribute("data-option", letter);
+          option.style.pointerEvents = "auto"; // Habilitar interacción
           option.onclick = () => selectOption(letter);
 
           option.innerHTML = `
@@ -662,7 +763,6 @@
 
         gameState.selectedOption = letter;
         const question = gameState.questions[gameState.currentQuestionIndex];
-        const isCorrect = letter === question.correctAnswer;
 
         // Marcar opción seleccionada
         const selectedElement = document.querySelector(
@@ -670,29 +770,109 @@
         );
         selectedElement.classList.add("selected");
 
-        // Después de 2 segundos, mostrar resultado
-        setTimeout(() => {
-          revealAnswer(question.correctAnswer, isCorrect);
-        }, 2000);
+        // Enviar respuesta al backend inmediatamente
+        const timeToAnswer = Math.round(
+          (Date.now() - gameState.questionStartTime) / 1000
+        );
+        fetch(`/api/sessions/${gameState.sessionId}/answer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            questionId: question.id,
+            selectedOption: gameState.selectedOption,
+            timeToAnswer: timeToAnswer,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+            return res.json();
+          })
+          .then((data) => console.log("Respuesta enviada al servidor", data))
+          .catch((err) => console.error("Error enviando respuesta", err));
+
+        // Deshabilitar todas las opciones para evitar cambios
+        document.querySelectorAll(".option").forEach((option) => {
+          option.style.pointerEvents = "none";
+        });
+
+        // Mostrar mensaje de espera
+        showWaitingMessage(
+          "Esperando al administrador para revelar la respuesta..."
+        );
       }
 
       // Revelar la respuesta correcta
       function revealAnswer(correctAnswer, wasCorrect) {
+        console.log(
+          `🎯 EJECUTANDO revealAnswer - correctAnswer: ${correctAnswer}, wasCorrect: ${wasCorrect}`
+        );
+
+        // Ocultar mensaje de espera
+        hideWaitingMessage();
+
+        // Obtener todas las opciones
+        const allOptions = document.querySelectorAll(".option");
+        console.log(`🎛️ Opciones encontradas en DOM: ${allOptions.length}`);
+
+        allOptions.forEach((option, index) => {
+          const letter = option.getAttribute("data-option");
+          console.log(`📍 Opción ${index}: letra=${letter}, elemento=`, option);
+        });
+
         // Marcar respuesta correcta
         const correctElement = document.querySelector(
           `[data-option="${correctAnswer}"]`
         );
-        correctElement.classList.add("correct");
+
+        console.log(
+          `🔍 Buscando elemento con data-option="${correctAnswer}":`,
+          correctElement
+        );
+
+        if (correctElement) {
+          console.log("✅ Elemento encontrado, aplicando clase 'correct'");
+          correctElement.classList.add("correct");
+
+          // Forzar repaint del navegador
+          correctElement.offsetHeight;
+
+          console.log(
+            `✅ Clases después de agregar 'correct':`,
+            correctElement.classList.toString()
+          );
+        } else {
+          console.log(
+            `❌ No se encontró elemento para la opción correcta: ${correctAnswer}`
+          );
+
+          // Debugging adicional
+          console.log("🔍 Todos los elementos con data-option:");
+          document.querySelectorAll("[data-option]").forEach((el) => {
+            console.log(
+              `   - data-option="${el.getAttribute("data-option")}"`,
+              el
+            );
+          });
+        }
 
         // Si la respuesta fue incorrecta, marcar como tal
         if (!wasCorrect && gameState.selectedOption) {
+          console.log(
+            `❌ Marcando respuesta incorrecta: ${gameState.selectedOption}`
+          );
           const incorrectElement = document.querySelector(
             `[data-option="${gameState.selectedOption}"]`
           );
-          incorrectElement.classList.add("incorrect");
+          if (incorrectElement) {
+            incorrectElement.classList.add("incorrect");
+            console.log(
+              `❌ Marcada opción incorrecta: ${gameState.selectedOption}`
+            );
+          }
         }
 
         // Deshabilitar todas las opciones
+        console.log("🔒 Deshabilitando todas las opciones");
         document.querySelectorAll(".option").forEach((option) => {
           option.style.pointerEvents = "none";
         });
@@ -700,6 +880,7 @@
         // Mostrar resultado después de 3 segundos
         setTimeout(() => {
           if (wasCorrect) {
+            console.log("🎉 Respuesta correcta - avanzando pregunta");
             if (
               gameState.currentQuestionIndex ===
               gameState.questions.length - 1
@@ -707,62 +888,23 @@
               // Última pregunta - ganó el juego
               endGame(true);
             } else {
-              // Siguiente pregunta
-              const nextBtn = document.getElementById("nextBtn");
-              const btnText = document.getElementById("nextBtnText");
-              const btnIcon = document.getElementById("nextBtnIcon");
+              // Esperar comando del admin para siguiente pregunta
+              showWaitingMessage(
+                "Esperando al administrador para continuar..."
+              );
 
-              // Texto dinámico según la pregunta
-              const questionNum = gameState.currentQuestionIndex + 2; // +2 porque es la siguiente
-              const totalQuestions = gameState.questions.length;
-
-              if (questionNum === totalQuestions) {
-                btnText.textContent = "¡Pregunta Final!";
-                btnIcon.textContent = " 🏆";
-              } else {
-                btnText.textContent = `Pregunta ${questionNum}/${totalQuestions}`;
-                btnIcon.textContent = " ➤";
-              }
-
-              nextBtn.style.display = "block";
-
-              // Animación de entrada
-              nextBtn.style.opacity = "0";
-              nextBtn.style.transform = "translateY(20px)";
-              setTimeout(() => {
-                nextBtn.style.transition = "all 0.5s ease";
-                nextBtn.style.opacity = "1";
-                nextBtn.style.transform = "translateY(0)";
-              }, 100);
+              // Guardar estado después de respuesta correcta
+              saveGameState();
             }
           } else {
-            // Perdió el juego
-            endGame(false);
+            // Perdió - modo espectador
+            gameState.isSpectator = true;
+            showSpectatorMode();
+
+            // Guardar estado en modo espectador
+            saveGameState();
           }
         }, 3000);
-      }
-
-      // Siguiente pregunta
-      function nextQuestion() {
-        // Animación del botón antes de cambiar pregunta
-        const nextBtn = document.getElementById("nextBtn");
-        const btnText = document.getElementById("nextBtnText");
-        const btnIcon = document.getElementById("nextBtnIcon");
-
-        btnText.textContent = "Cargando...";
-        btnIcon.textContent = " ⏳";
-        nextBtn.disabled = true;
-        nextBtn.style.pointerEvents = "none";
-
-        setTimeout(() => {
-          gameState.currentQuestionIndex++;
-          gameState.score = prizes[gameState.currentQuestionIndex - 1];
-          loadCurrentQuestion();
-
-          // Restaurar botón para la próxima vez
-          nextBtn.disabled = false;
-          nextBtn.style.pointerEvents = "auto";
-        }, 800);
       }
 
       // Terminar juego
@@ -785,12 +927,46 @@
           score.textContent = `$${gameState.score.toLocaleString()}`;
           message.textContent = "No te preocupes, ¡puedes intentarlo de nuevo!";
         }
+        
+        // Nota: No limpiamos localStorage aquí porque puede ser que el jugador 
+        // haya perdido individualmente, no que la partida haya terminado globalmente
       }
 
-      // Reiniciar juego
-      function restartGame() {
+      // Terminar juego por decisión del administrador
+      function endGameByAdmin() {
+        const gameOverScreen = document.getElementById("gameOverScreen");
+        const gameScreen = document.getElementById("gameScreen");
+        const welcomeScreen = document.getElementById("welcomeScreen");
+        const title = document.getElementById("gameOverTitle");
+        const score = document.getElementById("finalScore");
+        const message = document.getElementById("gameOverMessage");
+
+        // Ocultar todas las pantallas
+        gameScreen.style.display = "none";
+        welcomeScreen.style.display = "none";
+        gameOverScreen.style.display = "block";
+
+        title.textContent = "🔴 Partida Terminada";
+        score.textContent = `$${gameState.score.toLocaleString()}`;
+        message.textContent = "El administrador ha terminado la partida. Todos los datos han sido limpiados.";
+        
+        // Limpiar todos los datos persistentes
+        clearAllGameData();
+      }
+
+      // Función para limpiar todos los datos del juego
+      function clearAllGameData() {
+        console.log("🧹 Limpiando todos los datos del juego...");
+        
+        // Limpiar localStorage
+        localStorage.removeItem("sessionId");
+        localStorage.removeItem("gameState");
+        localStorage.removeItem("currentQuestion");
+        localStorage.removeItem("playerAnswers");
+        
+        // Resetear estado del juego
         gameState = {
-          playerName: "",
+          playerName: localStorage.getItem("playerName") || "", // Mantener solo el nombre para comodidad
           currentQuestionIndex: 0,
           questions: [],
           selectedOption: null,
@@ -799,15 +975,40 @@
             fiftyFifty: false,
             audience: false,
           },
+          sessionId: null,
+          isSpectator: false,
+          gameActive: false,
         };
+        
+        console.log("✅ Datos del juego limpiados completamente");
+      }
 
+      // Reiniciar juego
+      function restartGame() {
+        // Limpiar datos completamente antes de reiniciar
+        clearAllGameData();
+        
+        // Mostrar pantalla de bienvenida
         document.getElementById("gameOverScreen").style.display = "none";
         document.getElementById("welcomeScreen").style.display = "block";
-        document.getElementById("playerName").value = "";
+        document.getElementById("gameScreen").style.display = "none";
+        
+        // Limpiar formulario (excepto el nombre si ya estaba guardado)
+        const nameInput = document.getElementById("playerNameInput");
+        const savedName = localStorage.getItem("playerName");
+        if (savedName) {
+          nameInput.value = savedName;
+        }
 
         // Resetear comodines
         document.getElementById("fiftyFiftyLifeline").classList.remove("used");
         document.getElementById("audienceLifeline").classList.remove("used");
+
+        // Limpiar mensajes especiales
+        const waitingMsg = document.getElementById("waitingMessage");
+        const spectatorMsg = document.getElementById("spectatorMode");
+        if (waitingMsg) waitingMsg.remove();
+        if (spectatorMsg) spectatorMsg.remove();
       }
 
       // Comodín 50:50
@@ -817,6 +1018,23 @@
 
         gameState.lifelinesUsed.fiftyFifty = true;
         document.getElementById("fiftyFiftyLifeline").classList.add("used");
+
+        // Enviar al backend
+        if (gameState.sessionId) {
+          fetch(`/api/sessions/${gameState.sessionId}/lifeline`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "fiftyFifty" }),
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+              return res.json();
+            })
+            .then((data) =>
+              console.log("Comodín 50:50 enviado al servidor", data)
+            )
+            .catch((err) => console.error("Error enviando comodín 50:50", err));
+        }
 
         const question = gameState.questions[gameState.currentQuestionIndex];
         const correctAnswer = question.correctAnswer;
@@ -841,6 +1059,28 @@
 
         gameState.lifelinesUsed.audience = true;
         document.getElementById("audienceLifeline").classList.add("used");
+
+        // Enviar al backend
+        if (gameState.sessionId) {
+          fetch(`/api/sessions/${gameState.sessionId}/lifeline`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "audience" }),
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+              return res.json();
+            })
+            .then((data) =>
+              console.log(
+                "Comodín pregunta al público enviado al servidor",
+                data
+              )
+            )
+            .catch((err) =>
+              console.error("Error enviando comodín pregunta al público", err)
+            );
+        }
 
         const question = gameState.questions[gameState.currentQuestionIndex];
         const correctAnswer = question.correctAnswer;
@@ -918,6 +1158,754 @@
             startGame();
           }
         });
+
+      // Autocompletar nombre y comenzar si ya existe
+      document.addEventListener("DOMContentLoaded", async () => {
+        const savedPlayerName = localStorage.getItem("playerName");
+        const nameInput = document.getElementById("playerName");
+
+        if (savedPlayerName && nameInput) {
+          nameInput.value = savedPlayerName;
+
+          // Verificar si el juego está activo antes de iniciar automáticamente
+          try {
+            const response = await fetch("/api/game/state");
+            if (response.ok) {
+              const gameStateData = await response.json();
+              if (gameStateData.data.gameState.isActive) {
+                console.log(`👋 Bienvenido de vuelta, ${savedPlayerName}!`);
+
+                // Iniciar automáticamente si ya tenemos el nombre
+                await validateOrCreateSession(savedPlayerName);
+              } else {
+                // Si el juego no está activo, mostrar mensaje de espera
+                const startBtn = document.querySelector(".start-btn");
+                if (startBtn) {
+                  startBtn.textContent = `Esperando partida... (${savedPlayerName})`;
+                  startBtn.disabled = true;
+                  startBtn.style.opacity = "0.6";
+                }
+                console.log(
+                  "⏳ Juego no activo, esperando al administrador..."
+                );
+              }
+            }
+          } catch (err) {
+            console.error("Error verificando estado del juego:", err);
+            // Si hay error, permitir que el usuario intente manualmente
+            const startBtn = document.querySelector(".start-btn");
+            if (startBtn) {
+              startBtn.textContent = `Jugar como ${savedPlayerName}`;
+            }
+          }
+        } else {
+          // No hay nombre guardado, usuario debe ingresar uno
+          console.log("👤 Nuevo jugador, ingresa tu nombre");
+        }
+
+        // Conectar WebSocket independientemente
+        connectWebSocket();
+
+        // Verificar periódicamente si el juego se activa
+        setInterval(async () => {
+          if (
+            savedPlayerName &&
+            document.getElementById("welcomeScreen").style.display !== "none"
+          ) {
+            try {
+              const response = await fetch("/api/game/state");
+              if (response.ok) {
+                const gameStateData = await response.json();
+                if (gameStateData.data.gameState.isActive) {
+                  const startBtn = document.querySelector(".start-btn");
+                  if (startBtn && startBtn.disabled) {
+                    startBtn.textContent = `Jugar como ${savedPlayerName}`;
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = "1";
+                    console.log("🎮 ¡Juego activado! Puedes unirte ahora.");
+                  }
+                }
+              }
+            } catch (err) {
+              // Silenciar errores de verificación periódica
+            }
+          }
+        }, 5000); // Verificar cada 5 segundos
+      });
+
+      // Validar o crear sesión al recargar la página
+      async function validateOrCreateSession(playerName) {
+        try {
+          // Primero verificar si tengo una sesión guardada
+          const savedSessionId = localStorage.getItem("sessionId");
+
+          if (savedSessionId) {
+            // Verificar si la sesión sigue activa en el servidor
+            const sessionResponse = await fetch(
+              `/api/sessions/${savedSessionId}`
+            );
+            if (sessionResponse.ok) {
+              const sessionData = await sessionResponse.json();
+
+              // Restaurar estado completo desde el servidor
+              gameState.sessionId = savedSessionId;
+              gameState.playerName = playerName;
+
+              // Guardar el nombre en localStorage para futuras sesiones
+              localStorage.setItem("playerName", playerName);
+
+              console.log(
+                `🔄 Restaurando sesión: ${sessionData.data.session.gameStatus}`
+              );
+
+              // Cargar preguntas primero
+              await loadQuestions();
+
+              // Configurar según el estado del jugador
+              if (sessionData.data.session.gameStatus === "eliminated") {
+                // El jugador ya perdió - modo espectador
+                gameState.isSpectator = true;
+                gameState.gameStarted = true;
+                gameState.currentQuestionIndex =
+                  sessionData.data.session.currentQuestion - 1;
+                gameState.score = sessionData.data.session.totalPrize || 0;
+
+                // Ir a la pantalla de juego en modo espectador
+                document.getElementById("welcomeScreen").style.display = "none";
+                document.getElementById("gameScreen").style.display = "block";
+
+                // Cargar la pregunta actual para espectadores
+                loadCurrentQuestionForSpectator();
+                showSpectatorMode();
+                showWaitingMessage("Has perdido. Estás en modo espectador.");
+
+                console.log(
+                  `🍿 Sesión restaurada en modo espectador - Pregunta ${
+                    gameState.currentQuestionIndex + 1
+                  }`
+                );
+                return;
+              } else if (sessionData.data.session.gameStatus === "active") {
+                // Sesión activa, restaurar posición exacta
+                gameState.currentQuestionIndex =
+                  sessionData.data.session.currentQuestion - 1;
+                gameState.score = sessionData.data.session.totalPrize || 0;
+                gameState.gameStarted = true;
+
+                // Ir directamente al juego y cargar la pregunta actual
+                document.getElementById("welcomeScreen").style.display = "none";
+                document.getElementById("gameScreen").style.display = "block";
+
+                // Restaurar los comodines usados
+                if (sessionData.data.session.lifelinesUsed) {
+                  gameState.lifelinesUsed = {
+                    fiftyFifty:
+                      sessionData.data.session.lifelinesUsed.fiftyFifty ||
+                      false,
+                    audience:
+                      sessionData.data.session.lifelinesUsed.audience || false,
+                    phone:
+                      sessionData.data.session.lifelinesUsed.phone || false,
+                  };
+
+                  // Marcar comodines como usados en la UI
+                  if (gameState.lifelinesUsed.fiftyFifty) {
+                    const fiftyElement =
+                      document.getElementById("fiftyFiftyLifeline");
+                    if (fiftyElement) fiftyElement.classList.add("used");
+                  }
+                  if (gameState.lifelinesUsed.audience) {
+                    const audienceElement =
+                      document.getElementById("audienceLifeline");
+                    if (audienceElement) audienceElement.classList.add("used");
+                  }
+                  if (gameState.lifelinesUsed.phone) {
+                    const phoneElement =
+                      document.getElementById("phoneLifeline");
+                    if (phoneElement) phoneElement.classList.add("used");
+                  }
+                }
+
+                // Cargar la pregunta actual
+                loadCurrentQuestion();
+
+                console.log(
+                  `🎮 Sesión activa restaurada - Pregunta ${
+                    gameState.currentQuestionIndex + 1
+                  }, Score: ${gameState.score}`
+                );
+                return;
+              }
+            } else {
+              // Sesión no válida, limpiar localStorage
+              localStorage.removeItem("sessionId");
+              console.log("🧹 Sesión anterior no válida, limpiando...");
+            }
+          }
+
+          // No hay sesión válida, crear nueva
+          await startGame();
+        } catch (error) {
+          console.error("Error validando sesión:", error);
+          // En caso de error, iniciar juego normalmente
+          await startGame();
+        }
+      }
+
+      // WebSocket para recibir comandos del admin
+      function connectWebSocket() {
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onopen = () => {
+          console.log("✅ WebSocket conectado");
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log("📨 Comando del admin:", message);
+
+            if (message.type === "nextQuestion") {
+              console.log("🔄 Procesando comando nextQuestion");
+              console.log(`   - isSpectator: ${gameState.isSpectator}`);
+              console.log(
+                `   - questions loaded: ${gameState.questions?.length || 0}`
+              );
+              console.log(
+                `   - currentQuestionIndex: ${gameState.currentQuestionIndex}`
+              );
+
+              // Llamar nextQuestion sin condiciones restrictivas - el admin controla cuándo avanzar
+              nextQuestion();
+            } else if (message.type === "revealAnswer") {
+              revealAnswerCommand();
+            } else if (message.type === "gameEnded") {
+              // La partida ha sido terminada por el administrador
+              console.log("🔴 Partida terminada por el administrador");
+              console.log("🧹 Limpiando todos los datos...");
+              
+              // Terminar el juego para este jugador
+              endGameByAdmin();
+              
+              // Mostrar notificación si es posible
+              if (typeof showNotification === 'function') {
+                showNotification("🔴 La partida ha sido terminada por el administrador");
+              }
+            } else if (message.type === "gameState") {
+              gameState.gameActive = message.data.isActive;
+              if (!gameState.gameActive && !message.data.gameEndedByAdmin) {
+                // La partida ha terminado normalmente - restablecer todos los jugadores
+                resetPlayerToInitialState();
+                showGameNotActive();
+              } else if (gameState.gameActive) {
+                // El juego se activó, habilitar botón de inicio
+                const startBtn = document.querySelector(".start-btn");
+                if (startBtn) {
+                  startBtn.textContent = "¡Comenzar Juego!";
+                  startBtn.disabled = false;
+                  startBtn.style.opacity = "1";
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Error procesando comando WebSocket:", err);
+          }
+        };
+
+        ws.onclose = () => {
+          console.log("🔌 WebSocket desconectado, reintentando en 3s...");
+          setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = (err) => {
+          console.error("❌ Error WebSocket:", err);
+        };
+      }
+
+      // Siguiente pregunta (controlada por admin)
+      function nextQuestion() {
+        console.log("🔄 EJECUTANDO nextQuestion()");
+        console.log(
+          `   - Estado inicial: isSpectator=${gameState.isSpectator}, currentQuestionIndex=${gameState.currentQuestionIndex}`
+        );
+        console.log(
+          `   - Preguntas disponibles: ${gameState.questions?.length || 0}`
+        );
+
+        // Si no tenemos preguntas cargadas, cargarlas primero
+        if (!gameState.questions || gameState.questions.length === 0) {
+          console.log("📥 No hay preguntas, cargando...");
+          loadQuestions().then(() => {
+            console.log("✅ Preguntas cargadas, reintentando nextQuestion");
+            nextQuestion();
+          });
+          return;
+        }
+
+        if (gameState.isSpectator) {
+          // Los espectadores solo ven la pregunta pero no pueden interactuar
+          console.log("🍿 Avanzando pregunta para espectador");
+          gameState.currentQuestionIndex++;
+          loadCurrentQuestionForSpectator();
+          hideWaitingMessage();
+
+          // Guardar estado del espectador
+          saveGameState();
+          return;
+        }
+
+        // Jugadores activos
+        console.log("🎮 Avanzando pregunta para jugador activo");
+        gameState.currentQuestionIndex++;
+
+        // Actualizar puntuación basada en la pregunta anterior
+        if (gameState.currentQuestionIndex > 0) {
+          gameState.score = prizes[gameState.currentQuestionIndex - 1];
+        }
+
+        gameState.selectedOption = null; // Reset selection
+        gameState.questionStartTime = Date.now(); // Reset timer
+
+        console.log(
+          `   - Nueva pregunta: ${gameState.currentQuestionIndex + 1}`
+        );
+        console.log(`   - Nueva puntuación: ${gameState.score}`);
+
+        loadCurrentQuestion();
+        hideWaitingMessage();
+
+        // Guardar estado después de avanzar pregunta
+        saveGameState();
+      }
+
+      // Cargar pregunta actual para espectadores (solo lectura)
+      function loadCurrentQuestionForSpectator() {
+        if (gameState.currentQuestionIndex >= gameState.questions.length) {
+          showWaitingMessage(
+            "El juego ha terminado. Esperando al administrador..."
+          );
+          return;
+        }
+
+        const question = gameState.questions[gameState.currentQuestionIndex];
+        const questionNum = gameState.currentQuestionIndex + 1;
+
+        // Actualizar UI
+        document.getElementById("questionNumber").textContent = questionNum;
+        document.getElementById("currentQuestionNum").textContent = questionNum;
+        document.getElementById("currentPrize").textContent =
+          prizes[gameState.currentQuestionIndex].toLocaleString();
+        document.getElementById("questionText").textContent = question.question;
+
+        // Cargar opciones en modo solo lectura
+        loadOptionsForSpectator(question.options);
+
+        // Ocultar botón siguiente
+        document.getElementById("nextBtn").style.display = "none";
+
+        // Mostrar mensaje de espectador si no existe
+        if (!document.getElementById("spectatorMode")) {
+          showSpectatorMode();
+        }
+      }
+
+      // Cargar opciones para espectadores (sin interacción)
+      function loadOptionsForSpectator(options) {
+        const container = document.getElementById("optionsContainer");
+        container.innerHTML = "";
+
+        Object.keys(options).forEach((letter) => {
+          const option = document.createElement("div");
+          option.className = "option";
+          option.style.pointerEvents = "none"; // No clickeable
+          option.style.opacity = "0.7"; // Menos visible
+          option.innerHTML = `
+            <span class="option-letter">${letter}</span>
+            <span class="option-text">${options[letter]}</span>
+          `;
+          container.appendChild(option);
+        });
+      }
+
+      // Mostrar mensaje de espera
+      function showWaitingMessage(message) {
+        const waitingDiv = document.createElement("div");
+        waitingDiv.id = "waitingMessage";
+        waitingDiv.style.cssText = `
+          text-align: center;
+          margin: 20px;
+          padding: 20px;
+          background: var(--gold-light);
+          border: 2px solid var(--gold-primary);
+          border-radius: 15px;
+          color: var(--gold-dark);
+          font-weight: bold;
+          font-size: 1.2rem;
+        `;
+        waitingDiv.textContent = message;
+
+        const container = document.querySelector(".question-container");
+        container.appendChild(waitingDiv);
+      }
+
+      // Ocultar mensaje de espera
+      function hideWaitingMessage() {
+        const waitingDiv = document.getElementById("waitingMessage");
+        if (waitingDiv) {
+          waitingDiv.remove();
+        }
+      }
+
+      // Restablecer jugador al estado inicial cuando termina la partida
+      function resetPlayerToInitialState() {
+        console.log("🔄 Restableciendo jugador al estado inicial...");
+
+        // Reset del estado del juego
+        gameState = {
+          playerName: gameState.playerName || "", // Mantener el nombre
+          sessionId: gameState.sessionId || null, // Mantener sessionId si existe
+          currentQuestionIndex: 0,
+          score: 0,
+          questions: [],
+          selectedOption: null,
+          gameActive: false,
+          questionStartTime: null,
+          lifelines: {
+            fiftyFifty: true,
+            audiencePoll: true,
+          },
+          isSpectator: false, // Quitar modo espectador
+          gameStarted: false,
+        };
+
+        // Remover elemento de modo espectador si existe
+        const spectatorMode = document.getElementById("spectatorMode");
+        if (spectatorMode) {
+          spectatorMode.remove();
+        }
+
+        // Ocultar mensaje de espera
+        hideWaitingMessage();
+
+        // Mostrar pantalla de bienvenida
+        document.getElementById("welcomeScreen").style.display = "flex";
+        document.getElementById("gameScreen").style.display = "none";
+        document.getElementById("gameOverScreen").style.display = "none";
+
+        // Restablecer el input del nombre si el jugador no tiene nombre
+        if (!gameState.playerName) {
+          document.getElementById("playerName").value = "";
+        }
+
+        // Restablecer botón de inicio
+        const startBtn = document.querySelector(".start-btn");
+        if (startBtn && gameState.playerName) {
+          startBtn.textContent = "¡Esperar Nueva Partida!";
+          startBtn.disabled = true;
+          startBtn.style.opacity = "0.6";
+        }
+
+        // Limpiar localStorage de estado de partida (mantener nombre)
+        const savedName = localStorage.getItem("playerName");
+        localStorage.removeItem("gameState");
+        localStorage.removeItem("sessionId"); // Limpiar también sessionId
+        if (savedName) {
+          localStorage.setItem("playerName", savedName);
+        }
+
+        console.log("✅ Jugador restablecido al estado inicial");
+      }
+
+      // Modo espectador
+      function showSpectatorMode() {
+        // Verificar si ya existe el mensaje de espectador
+        const existingSpectator = document.getElementById("spectatorMode");
+        if (existingSpectator) {
+          return; // Ya está en modo espectador
+        }
+
+        const spectatorDiv = document.createElement("div");
+        spectatorDiv.id = "spectatorMode";
+        spectatorDiv.style.cssText = `
+          text-align: center;
+          margin: 20px;
+          padding: 30px;
+          background: rgba(244, 67, 54, 0.1);
+          border: 2px solid #f44336;
+          border-radius: 15px;
+          color: #f44336;
+          position: relative;
+          z-index: 100;
+        `;
+        spectatorDiv.innerHTML = `
+          <h3>🍿 Modo Espectador</h3>
+          <p>Has perdido, pero puedes seguir viendo el juego.</p>
+          <p>Espera a que el administrador termine la partida para jugar de nuevo.</p>
+        `;
+
+        const container = document.querySelector(".question-container");
+        if (container) {
+          // Insertar al principio del contenedor
+          container.insertBefore(spectatorDiv, container.firstChild);
+        }
+
+        // Deshabilitar comodines para espectadores
+        const lifelines = document.querySelectorAll(".lifeline");
+        lifelines.forEach((lifeline) => {
+          lifeline.style.pointerEvents = "none";
+          lifeline.style.opacity = "0.5";
+        });
+      }
+
+      // Comando revelar respuesta del admin
+      async function revealAnswerCommand() {
+        console.log("🎯 INICIANDO revealAnswerCommand");
+        console.log("Estado actual del juego:", gameState);
+
+        try {
+          // Si estamos en modo espectador o no tenemos las preguntas cargadas,
+          // intentar cargar la pregunta actual del servidor
+          if (
+            gameState.isSpectator ||
+            !gameState.questions ||
+            gameState.questions.length === 0
+          ) {
+            console.log("📥 Cargando preguntas desde servidor...");
+            await loadQuestions();
+          }
+
+          console.log(
+            "📊 Preguntas disponibles:",
+            gameState.questions?.length || 0
+          );
+          console.log(
+            "📍 Índice de pregunta actual:",
+            gameState.currentQuestionIndex
+          );
+
+          // Verificar si tenemos una pregunta válida
+          if (gameState.currentQuestionIndex < gameState.questions.length) {
+            const question =
+              gameState.questions[gameState.currentQuestionIndex];
+            console.log("❓ Pregunta actual:", question);
+
+            const wasCorrect =
+              gameState.selectedOption === question.correctAnswer;
+
+            console.log(
+              `🔍 Revelando respuesta: ${question.correctAnswer}, fue correcta: ${wasCorrect}`
+            );
+            console.log(
+              "🎯 Opción seleccionada por usuario:",
+              gameState.selectedOption
+            );
+
+            // Llamar a la función revealAnswer con los parámetros correctos
+            revealAnswer(question.correctAnswer, wasCorrect);
+          } else {
+            console.log("❌ No hay pregunta válida para revelar la respuesta");
+            console.log("🔧 Intentando fallback...");
+
+            // Como fallback, obtener la respuesta desde las opciones visibles
+            const options = document.querySelectorAll(".option");
+            console.log("🎛️ Opciones encontradas:", options.length);
+
+            if (options.length > 0) {
+              // Intentar obtener la pregunta actual desde el servidor
+              try {
+                const response = await fetch("/api/questions");
+                const questionsData = await response.json();
+                console.log(
+                  "📦 Datos de preguntas del servidor:",
+                  questionsData
+                );
+
+                if (
+                  questionsData.questions &&
+                  questionsData.questions.length > 0
+                ) {
+                  // Usar la primera pregunta como fallback
+                  const fallbackQuestion = questionsData.questions[0];
+                  console.log("🔄 Usando pregunta fallback:", fallbackQuestion);
+
+                  const wasCorrect =
+                    gameState.selectedOption === fallbackQuestion.correctAnswer;
+                  revealAnswer(fallbackQuestion.correctAnswer, wasCorrect);
+                } else {
+                  // Fallback final
+                  console.log(
+                    "⚠️ Usando fallback final con respuesta hardcodeada"
+                  );
+                  revealAnswer("D", false);
+                }
+              } catch (fetchError) {
+                console.error("Error obteniendo preguntas:", fetchError);
+                // Fallback final
+                revealAnswer("D", false);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error en revealAnswerCommand:", error);
+        }
+      }
+
+      // Mostrar que el juego no está activo
+      function showGameNotActive() {
+        document.getElementById("gameScreen").style.display = "none";
+        document.getElementById("gameOverScreen").style.display = "none";
+        document.getElementById("welcomeScreen").style.display = "flex";
+
+        const nameInput = document.getElementById("playerName");
+        if (gameState.playerName && nameInput) {
+          nameInput.value = gameState.playerName;
+        }
+
+        const startBtn = document.querySelector(".start-btn");
+        if (startBtn) {
+          startBtn.textContent = "Esperando que el admin inicie la partida...";
+          startBtn.disabled = true;
+          startBtn.style.opacity = "0.6";
+        }
+
+        // Mostrar mensaje temporal de que la partida terminó
+        showTemporaryMessage(
+          "🎮 La partida ha terminado. Todos los jugadores han sido restablecidos.",
+          "info"
+        );
+      }
+
+      // Mostrar mensaje temporal
+      function showTemporaryMessage(message, type = "info") {
+        const messageDiv = document.createElement("div");
+        messageDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: ${type === "info" ? "#2196f3" : "#4caf50"};
+          color: white;
+          padding: 15px 30px;
+          border-radius: 10px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          z-index: 1000;
+          font-weight: bold;
+          text-align: center;
+          max-width: 400px;
+        `;
+        messageDiv.textContent = message;
+        document.body.appendChild(messageDiv);
+
+        // Remover después de 5 segundos
+        setTimeout(() => {
+          if (messageDiv.parentNode) {
+            messageDiv.remove();
+          }
+        }, 5000);
+      }
+
+      // Sincronizar estado completo con el servidor
+      async function syncStateWithServer() {
+        if (!gameState.sessionId) {
+          console.log("🚫 No hay sessionId para sincronizar");
+          return false;
+        }
+
+        try {
+          const response = await fetch(`/api/sessions/${gameState.sessionId}`);
+          if (!response.ok) {
+            console.log(
+              "❌ Error obteniendo estado del servidor:",
+              response.status
+            );
+            return false;
+          }
+
+          const sessionData = await response.json();
+          if (!sessionData.success) {
+            console.log("❌ Respuesta del servidor no exitosa:", sessionData);
+            return false;
+          }
+
+          const serverSession = sessionData.data.session;
+
+          // Actualizar estado local con datos del servidor
+          gameState.currentQuestionIndex =
+            (serverSession.currentQuestion || 1) - 1;
+          gameState.score = serverSession.totalPrize || 0;
+
+          // Actualizar estado del jugador
+          if (serverSession.gameStatus === "eliminated") {
+            gameState.isSpectator = true;
+          } else if (serverSession.gameStatus === "active") {
+            gameState.isSpectator = false;
+          }
+
+          // Sincronizar comodines
+          if (serverSession.lifelinesUsed) {
+            gameState.lifelinesUsed = {
+              fiftyFifty: serverSession.lifelinesUsed.fiftyFifty || false,
+              audience: serverSession.lifelinesUsed.audience || false,
+              phone: serverSession.lifelinesUsed.phone || false,
+            };
+          }
+
+          console.log(
+            `🔄 Estado sincronizado - Pregunta: ${
+              gameState.currentQuestionIndex + 1
+            }, Score: ${gameState.score}, Estado: ${serverSession.gameStatus}`
+          );
+          return true;
+        } catch (error) {
+          console.error("Error sincronizando con servidor:", error);
+          return false;
+        }
+      }
+
+      // Guardar estado completo en localStorage
+      function saveGameState() {
+        const stateToSave = {
+          playerName: gameState.playerName,
+          sessionId: gameState.sessionId,
+          currentQuestionIndex: gameState.currentQuestionIndex,
+          score: gameState.score,
+          isSpectator: gameState.isSpectator,
+          gameStarted: gameState.gameStarted,
+          lifelinesUsed: gameState.lifelinesUsed,
+          timestamp: Date.now(),
+        };
+
+        localStorage.setItem("gameState", JSON.stringify(stateToSave));
+        console.log("💾 Estado del juego guardado en localStorage");
+      }
+
+      // Cargar estado completo desde localStorage
+      function loadGameState() {
+        try {
+          const savedState = localStorage.getItem("gameState");
+          if (savedState) {
+            const parsedState = JSON.parse(savedState);
+
+            // Verificar que no sea muy antiguo (más de 24 horas)
+            const now = Date.now();
+            const savedTime = parsedState.timestamp || 0;
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+
+            if (now - savedTime > twentyFourHours) {
+              console.log("🗑️ Estado guardado muy antiguo, descartando...");
+              localStorage.removeItem("gameState");
+              return null;
+            }
+
+            console.log("📱 Estado del juego cargado desde localStorage");
+            return parsedState;
+          }
+        } catch (error) {
+          console.error("Error cargando estado guardado:", error);
+          localStorage.removeItem("gameState");
+        }
+        return null;
+      }
     </script>
   </body>
 </html>

@@ -108,12 +108,26 @@ func (gc *GameControlHandler) EndGame(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	// Obtener estadísticas antes de limpiar para el reporte final
+	activeSessions, _ := gc.sessionService.GetActiveSessions()
+	totalPlayers := len(activeSessions)
+	
 	// Terminar el juego
 	err = gc.gameStateService.EndGame()
 	if err != nil {
 		gc.respondWithError(ctx, fasthttp.StatusInternalServerError, "Error terminando partida")
 		return
 	}
+
+	// Notificar a todos los jugadores que la partida ha terminado ANTES de limpiar datos
+	gc.hub.BroadcastMessage("gameEnded", map[string]interface{}{
+		"timestamp":    time.Now().Format(time.RFC3339),
+		"message":      "La partida ha terminado. Todos los datos serán limpiados.",
+		"totalPlayers": totalPlayers,
+	})
+
+	// Esperar un momento para que el mensaje llegue a todos los clientes
+	time.Sleep(1 * time.Second)
 
 	// Limpiar todas las sesiones y datos de la partida
 	err = gc.sessionService.ClearAllSessions()
@@ -123,13 +137,16 @@ func (gc *GameControlHandler) EndGame(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	gc.hub.BroadcastGameState(false, "Partida terminada - Se han limpiado todos los datos")
+	// Notificar estado final después de la limpieza
+	gc.hub.BroadcastGameState(false, "Partida terminada - Todos los datos han sido limpiados")
 
 	gc.respondWithSuccess(ctx, map[string]interface{}{
-		"timestamp": time.Now().Format(time.RFC3339),
+		"timestamp":    time.Now().Format(time.RFC3339),
+		"totalPlayers": totalPlayers,
+		"dataCleared":  true,
 	}, "Partida terminada exitosamente y datos limpiados")
 
-	log.Println("🔴 Partida terminada y datos limpiados desde el panel de administración")
+	log.Printf("🔴 Partida terminada y datos de %d jugadores limpiados desde el panel de administración", totalPlayers)
 }
 
 // GetGameState devuelve el estado actual del juego

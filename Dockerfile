@@ -25,9 +25,12 @@ WORKDIR /app
 COPY --from=builder /app/main .
 
 # Copiar archivos estáticos al contenedor
-COPY index.html ./
-COPY shared.css ./
-COPY answers.json ./
+ COPY index.html ./
+ COPY shared.css ./
+ COPY answers.json ./
+ COPY admin.html ./
+ COPY test-reveal.html ./
+ COPY test-data-persistence.html ./
 
 # Set timezone
 ENV TZ=America/Bogota

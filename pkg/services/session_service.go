@@ -201,13 +201,13 @@ func (s *SessionService) GetActiveSessions() ([]models.GameSession, error) {
 			continue
 		}
 
-		// Incluir sesiones activas y eliminadas (espectadores)
-		if session.GameStatus == "active" || session.GameStatus == "eliminated" {
+		// Solo incluir sesiones verdaderamente activas
+		if session.GameStatus == "active" {
 			sessions = append(sessions, *session)
 		} else {
-			// Solo remover si realmente terminó el juego (finished)
-			if session.GameStatus == "finished" {
-				s.removeFromActiveSessions(sessionID)
+			// Remover sesiones eliminadas o finalizadas del set
+			if err := s.removeFromActiveSessions(sessionID); err != nil {
+				log.Printf("⚠️ Error removiendo sesión inactiva %s: %v", sessionID, err)
 			}
 		}
 	}
@@ -393,7 +393,7 @@ func (s *SessionService) getRecentFinishedSessions() ([]models.GameSession, erro
 
 // ClearAllSessions elimina todas las sesiones y datos relacionados
 func (s *SessionService) ClearAllSessions() error {
-	log.Println("🧹 Limpiando todas las sesiones y datos de la partida...")
+	log.Println("🧹 Iniciando limpieza completa de todas las sesiones y datos de la partida...")
 
 	// Obtener todas las sesiones activas para limpiarlas individualmente
 	activeSessions, err := s.GetActiveSessions()
@@ -401,8 +401,17 @@ func (s *SessionService) ClearAllSessions() error {
 		log.Printf("⚠️ Error obteniendo sesiones activas: %v", err)
 	}
 
+	// Obtener sesiones terminadas también
+	finishedSessions, err := s.getRecentFinishedSessions()
+	if err != nil {
+		log.Printf("⚠️ Error obteniendo sesiones terminadas: %v", err)
+	}
+
+	allSessions := append(activeSessions, finishedSessions...)
+	totalSessions := len(allSessions)
+
 	// Limpiar sesiones individuales
-	for _, session := range activeSessions {
+	for _, session := range allSessions {
 		// Eliminar la sesión individual
 		sessionKey := fmt.Sprintf("quiz:session:%s", session.ID)
 		err := s.redisClient.Delete(sessionKey)
@@ -416,27 +425,56 @@ func (s *SessionService) ClearAllSessions() error {
 		if err != nil {
 			log.Printf("⚠️ Error eliminando historial del jugador %s: %v", session.PlayerName, err)
 		}
+
+		// Eliminar datos de respuestas del jugador
+		playerAnswersKey := fmt.Sprintf("quiz:player:%s:answers", session.PlayerName)
+		err = s.redisClient.Delete(playerAnswersKey)
+		if err != nil {
+			log.Printf("⚠️ Error eliminando respuestas del jugador %s: %v", session.PlayerName, err)
+		}
 	}
 
-	// Limpiar lista de sesiones activas
-	err = s.redisClient.Delete("quiz:active_sessions")
-	if err != nil {
-		log.Printf("⚠️ Error limpiando sesiones activas: %v", err)
+	// Limpiar listas centrales
+	keysToDelete := []string{
+		"quiz:active_sessions",
+		"quiz:finished_sessions", 
+		"quiz:player_names",
+		"quiz:game_stats",
+		"quiz:current_players",
+		"quiz:eliminated_players",
 	}
 
-	// Limpiar lista de sesiones terminadas recientes
-	err = s.redisClient.Delete("quiz:finished_sessions")
-	if err != nil {
-		log.Printf("⚠️ Error limpiando sesiones terminadas: %v", err)
+	for _, key := range keysToDelete {
+		err = s.redisClient.Delete(key)
+		if err != nil {
+			log.Printf("⚠️ Error limpiando clave %s: %v", key, err)
+		}
 	}
 
-	// Limpiar lista de nombres de jugadores
-	err = s.redisClient.Delete("quiz:player_names")
-	if err != nil {
-		log.Printf("⚠️ Error limpiando nombres de jugadores: %v", err)
+	// Limpiar cualquier clave relacionada con el juego que pueda existir
+	patterns := []string{
+		"quiz:session:*",
+		"quiz:player:*",
+		"quiz:game:*",
+		"quiz:question:*:responses",
 	}
 
-	log.Printf("✅ Se limpiaron %d sesiones y todos los datos relacionados", len(activeSessions))
+	for _, pattern := range patterns {
+		keys, err := s.redisClient.GetKeysByPattern(pattern)
+		if err != nil {
+			log.Printf("⚠️ Error obteniendo claves con patrón %s: %v", pattern, err)
+			continue
+		}
+		
+		for _, key := range keys {
+			err = s.redisClient.Delete(key)
+			if err != nil {
+				log.Printf("⚠️ Error eliminando clave %s: %v", key, err)
+			}
+		}
+	}
+
+	log.Printf("✅ Limpieza completa finalizada: %d sesiones eliminadas y todos los datos relacionados", totalSessions)
 	return nil
 }
 

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Persistencia de Datos</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid var(--gold-primary);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: linear-gradient(45deg, var(--gold-primary), var(--gold-secondary));
+            border: none;
+            border-radius: 8px;
+            color: #333;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 10px 20px;
+            margin: 5px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+        }
+        .status {
+            font-family: monospace;
+            background: #333;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Persistencia de Datos - Quiz Millonario</h1>
+        
+        <div class="test-section">
+            <h2>🎮 Estado del Juego</h2>
+            <p>Prueba la persistencia de datos durante y después de la partida</p>
+            <button onclick="checkGameState()">Verificar Estado</button>
+            <button onclick="startGame()">Iniciar Partida</button>
+            <button onclick="endGame()">Terminar Partida</button>
+            <div id="gameStatus" class="status">Estado: No verificado</div>
+        </div>
+
+        <div class="test-section">
+            <h2>👥 Sesiones de Jugadores</h2>
+            <p>Crea jugadores de prueba y verifica su persistencia</p>
+            <button onclick="createTestPlayers()">Crear Jugadores Test</button>
+            <button onclick="checkSessions()">Verificar Sesiones</button>
+            <button onclick="clearAllData()">Limpiar Todo</button>
+            <div id="sessionsStatus" class="status">Sesiones: No verificadas</div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧹 Test de Limpieza</h2>
+            <p>Verifica que los datos se limpien correctamente al terminar la partida</p>
+            <button onclick="runFullTest()">🚀 Test Completo</button>
+            <div id="testResults" class="status">Resultados: Esperando test...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔄 Estado en Tiempo Real</h2>
+            <p>Conectar WebSocket para monitorear cambios</p>
+            <button onclick="connectToWebSocket()">Conectar WebSocket</button>
+            <button onclick="disconnectWebSocket()">Desconectar</button>
+            <div id="wsStatus" class="status">WebSocket: Desconectado</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let testPlayers = ['TestPlayer1', 'TestPlayer2', 'TestPlayer3'];
+
+        // Verificar estado actual del juego
+        async function checkGameState() {
+            const status = document.getElementById('gameStatus');
+            try {
+                const response = await fetch('/api/game/state');
+                const data = await response.json();
+                
+                status.textContent = `Estado del Juego:
+- Activo: ${data.data.gameState.isActive}
+- Pregunta actual: ${data.data.gameState.currentQuestion || 'N/A'}
+- Tiempo: ${new Date().toLocaleTimeString()}`;
+                
+                return data.data.gameState.isActive;
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                return false;
+            }
+        }
+
+        // Iniciar partida
+        async function startGame() {
+            try {
+                const response = await fetch('/api/game/start', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult('success', '✅ Partida iniciada correctamente');
+                    checkGameState();
+                } else {
+                    addResult('error', `❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                addResult('error', `❌ Error de conexión: ${error.message}`);
+            }
+        }
+
+        // Terminar partida
+        async function endGame() {
+            try {
+                const response = await fetch('/api/game/end', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult('success', `✅ Partida terminada - ${data.data.totalPlayers || 0} jugadores limpiados`);
+                    checkGameState();
+                    checkSessions();
+                } else {
+                    addResult('error', `❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                addResult('error', `❌ Error de conexión: ${error.message}`);
+            }
+        }
+
+        // Crear jugadores de prueba
+        async function createTestPlayers() {
+            const status = document.getElementById('sessionsStatus');
+            let results = [];
+            
+            for (const playerName of testPlayers) {
+                try {
+                    const response = await fetch('/api/sessions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ playerName })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        results.push(`✅ ${playerName}: ${data.data.sessionId}`);
+                    } else {
+                        results.push(`❌ ${playerName}: ${data.error}`);
+                    }
+                } catch (error) {
+                    results.push(`❌ ${playerName}: ${error.message}`);
+                }
+            }
+            
+            status.textContent = `Jugadores creados:\n${results.join('\n')}`;
+            addResult('info', `Intenté crear ${testPlayers.length} jugadores de prueba`);
+        }
+
+        // Verificar sesiones
+        async function checkSessions() {
+            const status = document.getElementById('sessionsStatus');
+            try {
+                const response = await fetch('/api/admin/sessions');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const sessions = data.data.sessions || [];
+                    status.textContent = `Sesiones encontradas: ${sessions.length}
+${sessions.map(s => `- ${s.playerName} (${s.gameStatus})`).join('\n')}
+Verificado: ${new Date().toLocaleTimeString()}`;
+                    
+                    return sessions.length;
+                } else {
+                    status.textContent = `Error: ${data.error}`;
+                    return 0;
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                return 0;
+            }
+        }
+
+        // Limpiar todos los datos manualmente
+        async function clearAllData() {
+            if (!confirm('¿Estás seguro de que quieres limpiar todos los datos?')) return;
+            
+            try {
+                // Primero terminar el juego si está activo
+                await fetch('/api/game/end', { method: 'POST' });
+                
+                addResult('success', '🧹 Datos limpiados');
+                checkGameState();
+                checkSessions();
+            } catch (error) {
+                addResult('error', `❌ Error limpiando: ${error.message}`);
+            }
+        }
+
+        // Test completo
+        async function runFullTest() {
+            const results = document.getElementById('testResults');
+            results.textContent = 'Ejecutando test completo...\n';
+            
+            try {
+                // 1. Verificar estado inicial
+                results.textContent += '1. Verificando estado inicial...\n';
+                await checkGameState();
+                
+                // 2. Iniciar partida
+                results.textContent += '2. Iniciando partida...\n';
+                await startGame();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 3. Crear jugadores
+                results.textContent += '3. Creando jugadores de prueba...\n';
+                await createTestPlayers();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 4. Verificar persistencia
+                results.textContent += '4. Verificando persistencia...\n';
+                const sessionsBeforeEnd = await checkSessions();
+                
+                // 5. Terminar partida
+                results.textContent += '5. Terminando partida...\n';
+                await endGame();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 6. Verificar limpieza
+                results.textContent += '6. Verificando limpieza...\n';
+                const sessionsAfterEnd = await checkSessions();
+                
+                // Resultados finales
+                results.textContent += `\n📊 RESULTADOS FINALES:
+- Sesiones antes de terminar: ${sessionsBeforeEnd}
+- Sesiones después de terminar: ${sessionsAfterEnd}
+- Limpieza exitosa: ${sessionsAfterEnd === 0 ? '✅ SÍ' : '❌ NO'}
+- Test completado: ${new Date().toLocaleTimeString()}`;
+                
+            } catch (error) {
+                results.textContent += `\n❌ Error en test: ${error.message}`;
+            }
+        }
+
+        // Conectar WebSocket
+        function connectToWebSocket() {
+            const status = document.getElementById('wsStatus');
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                status.textContent = 'WebSocket: Ya conectado';
+                return;
+            }
+            
+            ws = new WebSocket(`ws://${window.location.host}/ws`);
+            
+            ws.onopen = () => {
+                status.textContent = 'WebSocket: ✅ Conectado';
+                addResult('success', '🔌 WebSocket conectado');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    status.textContent += `\n📨 ${message.type}: ${JSON.stringify(message.data)}`;
+                } catch (error) {
+                    status.textContent += `\n❌ Error parseando mensaje: ${error.message}`;
+                }
+            };
+            
+            ws.onclose = () => {
+                status.textContent = 'WebSocket: 🔴 Desconectado';
+                addResult('error', '🔌 WebSocket desconectado');
+            };
+            
+            ws.onerror = (error) => {
+                status.textContent = `WebSocket: ❌ Error - ${error.message}`;
+                addResult('error', `🔌 Error WebSocket: ${error.message}`);
+            };
+        }
+
+        // Desconectar WebSocket
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                document.getElementById('wsStatus').textContent = 'WebSocket: Desconectado manualmente';
+            }
+        }
+
+        // Agregar resultado visual
+        function addResult(type, message) {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            // Agregar al inicio del contenedor
+            const container = document.querySelector('.container');
+            container.insertBefore(div, container.firstChild);
+            
+            // Remover después de 10 segundos
+            setTimeout(() => {
+                if (div.parentNode) {
+                    div.parentNode.removeChild(div);
+                }
+            }, 10000);
+        }
+
+        // Verificar estado inicial al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            checkGameState();
+            checkSessions();
+        });
+    </script>
+</body>
+</html>

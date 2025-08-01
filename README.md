@@ -11,6 +11,9 @@ Un juego de preguntas y respuestas inspirado en el programa "¿Quién Quiere Ser
 - **Interfaz responsiva** que funciona en móviles y desktop
 - **UUID persistente** para cada jugador
 - **Estado del juego** guardado en localStorage
+- **📊 Persistencia inteligente**: Los datos se mantienen solo durante la partida activa
+- **🧹 Limpieza automática**: Al terminar la partida, todos los datos se eliminan automáticamente
+- **👨‍💼 Panel de administración** con control total sobre la partida y datos
 
 ## 🚀 Instalación y Uso
 
@@ -53,7 +56,9 @@ Un juego de preguntas y respuestas inspirado en el programa "¿Quién Quiere Ser
 
 5. **Abrir en el navegador:**
    ```
-   http://localhost:8080
+   http://localhost:8080          # Juego principal
+   http://localhost:8080/admin    # Panel de administración
+   http://localhost:8080/test-data-persistence  # Test de persistencia
    ```
 
 ### Ejecutar con Docker
@@ -84,14 +89,41 @@ docker-compose up -d
 ### Control del Juego
 
 - `POST /api/game/start` - Iniciar juego
-- `POST /api/game/end` - Terminar juego
+- `POST /api/game/end` - Terminar juego (limpia TODOS los datos)
 - `GET /api/game/state` - Estado actual del juego
 - `POST /api/game/next-question` - Avanzar pregunta
 - `POST /api/game/reveal-answer` - Revelar respuesta
 
+### Administración
+
+- `GET /api/admin/sessions` - Sesiones activas y eliminadas
+- `GET /admin` - Panel de administración web
+- `GET /test-data-persistence` - Herramienta de testing
+
 ### WebSocket
 
 - `GET /ws` - Conexión WebSocket para tiempo real
+
+## 📊 Gestión de Datos
+
+### Persistencia durante la partida
+- Los datos de jugadores, respuestas y progreso se mantienen en Redis
+- Sincronización en tiempo real entre todos los clientes
+- Estado persistente incluso si un jugador se desconecta temporalmente
+
+### Limpieza automática al finalizar
+- **Automática**: Al usar el endpoint `/api/game/end`
+- **Completa**: Elimina sesiones activas, eliminadas, respuestas y metadatos
+- **Instantánea**: Los clientes reciben notificación via WebSocket
+- **Verificable**: Panel de test para confirmar la limpieza
+
+### Datos que se limpian
+- ✅ Sesiones de jugadores activos
+- ✅ Sesiones de jugadores eliminados  
+- ✅ Respuestas y progreso individual
+- ✅ Metadatos del juego
+- ✅ Estados de comodines
+- ✅ localStorage del frontend (al recibir señal de término)
 
 ## 🎯 Preguntas Incluidas
 

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prueba Revelar Respuesta</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .container {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+
+      .option {
+        background: #2a2a3e;
+        border: 2px solid #444;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        margin: 10px 0;
+        padding: 15px 20px;
+        transition: all 0.3s ease;
+      }
+
+      .option:hover {
+        background: #3a3a4e;
+        border-color: #ffd700;
+      }
+
+      .option-letter {
+        background: #ffd700;
+        border-radius: 50%;
+        color: #333;
+        font-weight: bold;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+      }
+
+      .option-text {
+        flex: 1;
+        font-size: 1.1rem;
+      }
+
+      .option.correct {
+        background: linear-gradient(45deg, #4caf50, #66bb6a) !important;
+        border-color: #4caf50 !important;
+        animation: pulse-correct 1s ease-in-out;
+      }
+
+      .option.incorrect {
+        background: linear-gradient(45deg, #f44336, #ef5350) !important;
+        border-color: #f44336 !important;
+      }
+
+      @keyframes pulse-correct {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.02);
+        }
+      }
+
+      button {
+        background: linear-gradient(45deg, #ffd700, #ffed4e);
+        border: none;
+        border-radius: 8px;
+        color: #333;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        padding: 12px 24px;
+        margin: 10px;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+      }
+
+      .debug {
+        margin-top: 20px;
+        padding: 15px;
+        background: #333;
+        border-radius: 8px;
+        color: #fff;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Prueba de Revelar Respuesta</h1>
+
+      <div id="question-container">
+        <h2>¿Quién pintó la Mona Lisa?</h2>
+
+        <div class="option" data-option="A">
+          <div class="option-letter">A</div>
+          <div class="option-text">Van Gogh</div>
+        </div>
+
+        <div class="option" data-option="B">
+          <div class="option-letter">B</div>
+          <div class="option-text">Picasso</div>
+        </div>
+
+        <div class="option" data-option="C">
+          <div class="option-letter">C</div>
+          <div class="option-text">Dalí</div>
+        </div>
+
+        <div class="option" data-option="D">
+          <div class="option-letter">D</div>
+          <div class="option-text">Leonardo da Vinci</div>
+        </div>
+      </div>
+
+      <div>
+        <button onclick="selectOption('B')">Seleccionar B (Incorrecta)</button>
+        <button onclick="revealAnswer('D', false)">Revelar Respuesta</button>
+        <button onclick="reset()">Reset</button>
+      </div>
+
+      <div class="debug" id="debug">
+        <strong>Debug:</strong><br />
+        Estado: Esperando acción...
+      </div>
+    </div>
+
+    <script>
+      let selectedOption = null;
+
+      function selectOption(letter) {
+        // Limpiar selección anterior
+        document.querySelectorAll(".option").forEach((option) => {
+          option.classList.remove("selected");
+        });
+
+        // Marcar nueva selección
+        const element = document.querySelector(`[data-option="${letter}"]`);
+        if (element) {
+          element.classList.add("selected");
+          selectedOption = letter;
+          updateDebug(`Opción seleccionada: ${letter}`);
+        }
+      }
+
+      function revealAnswer(correctAnswer, wasCorrect) {
+        updateDebug(
+          `Revelando respuesta: ${correctAnswer}, wasCorrect: ${wasCorrect}`
+        );
+
+        // Marcar respuesta correcta
+        const correctElement = document.querySelector(
+          `[data-option="${correctAnswer}"]`
+        );
+        if (correctElement) {
+          correctElement.classList.add("correct");
+          updateDebug(`✅ Marcada opción correcta: ${correctAnswer}`);
+        } else {
+          updateDebug(
+            `❌ No se encontró elemento para la opción correcta: ${correctAnswer}`
+          );
+        }
+
+        // Si la respuesta fue incorrecta, marcar como tal
+        if (!wasCorrect && selectedOption) {
+          const incorrectElement = document.querySelector(
+            `[data-option="${selectedOption}"]`
+          );
+          if (incorrectElement) {
+            incorrectElement.classList.add("incorrect");
+            updateDebug(`❌ Marcada opción incorrecta: ${selectedOption}`);
+          }
+        }
+
+        // Deshabilitar todas las opciones
+        document.querySelectorAll(".option").forEach((option) => {
+          option.style.pointerEvents = "none";
+        });
+      }
+
+      function reset() {
+        document.querySelectorAll(".option").forEach((option) => {
+          option.classList.remove("selected", "correct", "incorrect");
+          option.style.pointerEvents = "auto";
+        });
+        selectedOption = null;
+        updateDebug("Reset completado");
+      }
+
+      function updateDebug(message) {
+        const debugElement = document.getElementById("debug");
+        debugElement.innerHTML = `<strong>Debug:</strong><br>${message}<br>selectedOption: ${selectedOption}`;
+        console.log(message);
+      }
+
+      // Agregar CSS para selección
+      const style = document.createElement("style");
+      style.textContent = `
+            .option.selected {
+                background: linear-gradient(45deg, #ffd700, #ffed4e) !important;
+                color: #333 !important;
+                border-color: #ffd700 !important;
+            }
+        `;
+      document.head.appendChild(style);
+    </script>
+  </body>
+</html>

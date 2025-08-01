@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Sesiones Activas</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .container {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 20px;
+        color: #333;
+        background: #fff;
+        border-radius: 10px;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: var(--gold-dark);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+      th,
+      td {
+        padding: 12px;
+        border: 1px solid #ddd;
+        text-align: center;
+      }
+      th {
+        background: var(--gold-light);
+        color: var(--gold-dark);
+      }
+      tr:nth-child(even) {
+        background: #f9f9f9;
+      }
+
+      /* Estilos específicos para jugadores eliminados */
+      .player-eliminated {
+        background: #ffebee !important;
+        color: #c62828;
+        opacity: 0.8;
+      }
+
+      .player-active {
+        background: #e8f5e8 !important;
+        color: #2e7d32;
+      }
+
+      /* Información del juego actual */
+      .game-info {
+        background: linear-gradient(45deg, var(--gold-light), #fff3e0);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-left: 5px solid var(--gold-primary);
+      }
+
+      .current-question {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--gold-dark);
+        margin-bottom: 10px;
+      }
+
+      .current-answer {
+        font-size: 1.1rem;
+        color: #2e7d32;
+        background: #e8f5e8;
+        padding: 10px;
+        border-radius: 5px;
+        border-left: 4px solid #4caf50;
+      }
+
+      .section-title {
+        color: var(--gold-dark);
+        border-bottom: 2px solid var(--gold-primary);
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+
+      /* Tabla vacía */
+      .empty-table {
+        text-align: center;
+        color: #999;
+        font-style: italic;
+        padding: 20px;
+      }
+
+      /* Mejoras visuales para el estado del juego */
+      .game-status-active {
+        color: #2e7d32;
+        font-weight: bold;
+      }
+
+      .game-status-playing {
+        color: #2e7d32;
+        font-weight: bold;
+      }
+
+      .game-status-waiting {
+        color: #ff9800;
+        font-weight: bold;
+      }
+
+      .game-status-eliminated {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+
+      .game-status-finished {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+
+      .game-status-gameOver {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+
+      /* Estilos para botones de control */
+      .btn-standard {
+        background: linear-gradient(
+          45deg,
+          var(--gold-primary),
+          var(--gold-secondary)
+        );
+        border: none;
+        border-radius: 8px;
+        color: #333;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+        margin: 5px;
+      }
+      .btn-standard:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+      }
+      .btn-standard:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .btn-success {
+        background: linear-gradient(45deg, #4caf50, #66bb6a);
+        color: white;
+      }
+      .btn-error {
+        background: linear-gradient(45deg, #f44336, #ef5350);
+        color: white;
+      }
+      .btn-info {
+        background: linear-gradient(45deg, #2196f3, #42a5f5);
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Panel Admin - Control de Partida</h1>
+
+      <!-- Controles de juego -->
+      <div style="margin-bottom: 20px">
+        <h2 class="section-title">Control de Partida</h2>
+        <button
+          id="startGameBtn"
+          class="btn-standard btn-success"
+          onclick="startGame()"
+        >
+          Iniciar Partida
+        </button>
+        <button
+          id="endGameBtn"
+          class="btn-standard btn-error"
+          onclick="endGame()"
+        >
+          Terminar Partida
+        </button>
+        <button
+          id="nextQuestionBtn"
+          class="btn-standard btn-info"
+          onclick="nextQuestion()"
+        >
+          Siguiente Pregunta
+        </button>
+        <button
+          id="revealAnswerBtn"
+          class="btn-standard btn-info"
+          onclick="revealAnswer()"
+        >
+          Mostrar Respuesta
+        </button>
+      </div>
+
+      <!-- Información del juego actual -->
+      <div class="game-info">
+        <h2 class="section-title">Información Actual del Juego</h2>
+        <div id="currentGameInfo">
+          <div class="current-question" id="currentQuestionDisplay">
+            Cargando pregunta actual...
+          </div>
+          <div class="current-answer" id="currentAnswerDisplay">
+            Cargando respuesta...
+          </div>
+        </div>
+      </div>
+
+      <!-- Jugador actualmente en turno -->
+      <div
+        id="currentPlayer"
+        style="
+          color: var(--gold-dark);
+          font-size: 1.1rem;
+          font-weight: bold;
+          margin-bottom: 20px;
+        "
+      ></div>
+
+      <!-- Sección de jugadores activos -->
+      <h2 class="section-title">Jugadores Activos</h2>
+      <table id="sessionsTable">
+        <thead>
+          <tr>
+            <th>Partida</th>
+            <th>Jugador</th>
+            <th>Pregunta Actual</th>
+            <th>Estado</th>
+            <th>Score</th>
+            <th>Respuestas dadas</th>
+            <th>Última actividad</th>
+            <th>Última respuesta</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- Sección de jugadores eliminados -->
+      <h2 class="section-title" style="margin-top: 30px">
+        Jugadores Eliminados
+      </h2>
+      <table id="eliminatedTable">
+        <thead>
+          <tr>
+            <th>Jugador</th>
+            <th>Pregunta donde falló</th>
+            <th>Respuesta incorrecta</th>
+            <th>Respuesta correcta</th>
+            <th>Score final</th>
+            <th>Hora eliminación</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <!-- Jugador actualmente en turno -->
+      <div
+        id="currentPlayer"
+        style="
+          text-align: center;
+          margin-bottom: 15px;
+          font-size: 1.2rem;
+          color: var(--gold-dark);
+        "
+      ></div>
+      <table id="sessionsTable">
+        <thead>
+          <tr>
+            <th>Partida</th>
+            <th>Jugador</th>
+            <th>Pregunta Actual</th>
+            <th>Estado</th>
+            <th>Respuestas dadas</th>
+            <th>Última actividad</th>
+            <th>Última respuesta</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <script>
+      async function loadSessions() {
+        try {
+          const res = await fetch("/api/admin/sessions");
+          if (!res.ok) {
+            console.error("Error HTTP cargando sesiones", res.status);
+            return;
+          }
+          const sessions = await res.json();
+          if (!Array.isArray(sessions)) {
+            console.error("Respuesta inválida de sesiones:", sessions);
+            return;
+          }
+
+          console.log("📊 Sesiones recibidas:", sessions.length, sessions);
+
+          // Separar jugadores activos y eliminados/espectadores
+          // Activos: pueden seguir jugando
+          const activeSessions = sessions.filter(
+            (s) =>
+              s.gameStatus === "active" ||
+              s.gameStatus === "playing" ||
+              s.gameStatus === "waiting"
+          );
+
+          // Eliminados: perdieron pero pueden estar en modo espectador
+          const eliminatedSessions = sessions.filter(
+            (s) =>
+              s.gameStatus === "eliminated" ||
+              s.gameStatus === "finished" ||
+              s.gameStatus === "gameOver" ||
+              s.gameStatus === "spectator"
+          );
+
+          console.log(
+            "🟢 Sesiones activas:",
+            activeSessions.length,
+            activeSessions
+          );
+          console.log(
+            "🔴 Sesiones eliminadas/espectadores:",
+            eliminatedSessions.length,
+            eliminatedSessions
+          );
+
+          // Actualizar tabla de jugadores activos
+          const tbody = document.querySelector("#sessionsTable tbody");
+          tbody.innerHTML = "";
+          if (activeSessions.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="8" class="empty-table">No hay jugadores activos</td></tr>';
+          } else {
+            activeSessions.forEach((s) => {
+              const lastAnswer =
+                s.answersGiven && s.answersGiven.length > 0
+                  ? s.answersGiven[s.answersGiven.length - 1].selectedOption
+                  : "-";
+              const lastAct = new Date(s.lastActivity).toLocaleTimeString();
+              const score = s.score || s.totalPrize || 0;
+              const statusClass = `game-status-${s.gameStatus}`;
+              const tr = document.createElement("tr");
+              tr.className = "player-active";
+              tr.innerHTML = `
+                <td>${s.id}</td>
+                <td>${s.playerName}</td>
+                <td>${s.currentQuestion}</td>
+                <td><span class="${statusClass}">${s.gameStatus}</span></td>
+                <td>$${score.toLocaleString()}</td>
+                <td>${s.answersGiven.length}</td>
+                <td>${lastAct}</td>
+                <td>${lastAnswer}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+
+          // Actualizar tabla de jugadores eliminados
+          const eliminatedTbody = document.querySelector(
+            "#eliminatedTable tbody"
+          );
+          eliminatedTbody.innerHTML = "";
+          if (eliminatedSessions.length === 0) {
+            eliminatedTbody.innerHTML =
+              '<tr><td colspan="6" class="empty-table">Ningún jugador ha sido eliminado aún</td></tr>';
+          } else {
+            eliminatedSessions.forEach((s) => {
+              const lastIncorrectAnswer =
+                s.answersGiven && s.answersGiven.length > 0
+                  ? s.answersGiven.find((answer) => !answer.isCorrect)
+                  : null;
+
+              const failedQuestion = lastIncorrectAnswer
+                ? lastIncorrectAnswer.questionId
+                : s.currentQuestion;
+              const incorrectAnswer = lastIncorrectAnswer
+                ? lastIncorrectAnswer.selectedOption
+                : "-";
+              const correctAnswer = lastIncorrectAnswer
+                ? lastIncorrectAnswer.correctAnswer
+                : "-";
+              const finalScore = s.score || s.totalPrize || 0;
+              const eliminationTime = new Date(
+                s.lastActivity
+              ).toLocaleTimeString();
+
+              const tr = document.createElement("tr");
+              tr.className = "player-eliminated";
+              tr.innerHTML = `
+                <td>${s.playerName}</td>
+                <td>${failedQuestion}</td>
+                <td>${incorrectAnswer}</td>
+                <td>${correctAnswer}</td>
+                <td>$${finalScore.toLocaleString()}</td>
+                <td>${eliminationTime}</td>
+              `;
+              eliminatedTbody.appendChild(tr);
+            });
+          }
+        } catch (err) {
+          console.error("Error cargando sesiones:", err);
+        }
+      }
+
+      // Cargar información actual del juego
+      async function loadCurrentGameInfo() {
+        try {
+          console.log("🔄 Cargando información actual del juego...");
+
+          const [gameStateRes, questionsRes] = await Promise.all([
+            fetch("/api/game/state"),
+            fetch("/api/questions"),
+          ]);
+
+          if (!gameStateRes.ok || !questionsRes.ok) {
+            console.error(
+              "Error cargando información del juego - HTTP status:",
+              gameStateRes.status,
+              questionsRes.status
+            );
+            return;
+          }
+
+          const gameState = await gameStateRes.json();
+          const questionsData = await questionsRes.json();
+
+          console.log("📊 Estado del juego:", gameState);
+          console.log(
+            "❓ Preguntas disponibles:",
+            questionsData.questions?.length || 0
+          );
+
+          // Usar la estructura correcta de la respuesta de la API
+          const currentQuestionNum =
+            gameState.data?.gameState?.currentQuestion ||
+            gameState.currentQuestion ||
+            1;
+          const isActive =
+            gameState.data?.gameState?.isActive || gameState.isActive || false;
+          const maxQuestions = 
+            gameState.data?.gameState?.maxQuestions || 
+            gameState.maxQuestions || 
+            questionsData.questions?.length || 8;
+
+          console.log(`🎯 Pregunta actual calculada: ${currentQuestionNum} de ${maxQuestions}`);
+
+          const currentQuestion = questionsData.questions?.find(
+            (q) => q.id === currentQuestionNum
+          );
+
+          const questionDisplay = document.getElementById(
+            "currentQuestionDisplay"
+          );
+          const answerDisplay = document.getElementById("currentAnswerDisplay");
+
+          if (currentQuestion && isActive) {
+            questionDisplay.innerHTML = `
+              <strong>Pregunta ${currentQuestionNum} de ${maxQuestions}:</strong> ${currentQuestion.question}
+              <br>
+              <small>A) ${currentQuestion.options.A} | B) ${
+              currentQuestion.options.B
+            } | C) ${currentQuestion.options.C} | D) ${
+              currentQuestion.options.D
+            }</small>
+            `;
+            answerDisplay.innerHTML = `
+              <strong>Respuesta correcta:</strong> ${
+                currentQuestion.correctAnswer
+              }) ${currentQuestion.options[currentQuestion.correctAnswer]}
+              <br>
+              <small><em>${
+                currentQuestion.explanation || "Sin explicación disponible"
+              }</em></small>
+            `;
+            console.log(
+              `✅ Mostrando pregunta ${currentQuestionNum}: ${currentQuestion.question}`
+            );
+          } else if (!isActive) {
+            questionDisplay.innerHTML =
+              "<strong>🚫 Juego no activo</strong><br><small>El administrador debe iniciar la partida</small>";
+            answerDisplay.innerHTML = "<em>Esperando inicio del juego...</em>";
+            console.log("⏸️ Juego no está activo");
+          } else {
+            questionDisplay.innerHTML = `<strong>❓ Pregunta ${currentQuestionNum}</strong><br><small>Pregunta no encontrada en la base de datos</small>`;
+            answerDisplay.innerHTML = "<em>No se puede mostrar respuesta</em>";
+            console.log(`❌ Pregunta ${currentQuestionNum} no encontrada`);
+          }
+        } catch (err) {
+          console.error("Error cargando información del juego:", err);
+          const questionDisplay = document.getElementById(
+            "currentQuestionDisplay"
+          );
+          const answerDisplay = document.getElementById("currentAnswerDisplay");
+          if (questionDisplay)
+            questionDisplay.innerHTML =
+              "<strong>❌ Error cargando pregunta</strong>";
+          if (answerDisplay)
+            answerDisplay.innerHTML = "<em>Error cargando respuesta</em>";
+        }
+      }
+
+      // Mostrar jugador más reciente y el más avanzado
+      async function updateCurrentPlayer() {
+        try {
+          const res = await fetch("/api/admin/sessions");
+          if (!res.ok) {
+            console.error("Error HTTP obteniendo sesiones", res.status);
+            return;
+          }
+          const sessions = await res.json();
+          if (!Array.isArray(sessions)) {
+            console.error(
+              "Respuesta inválida de sesiones para jugador actual:",
+              sessions
+            );
+            return;
+          }
+          
+          if (sessions.length > 0) {
+            // Filtrar solo jugadores activos
+            const activeSessions = sessions.filter(s => 
+              s.gameStatus === 'active' || 
+              s.gameStatus === 'playing' || 
+              s.gameStatus === 'waiting'
+            );
+            
+            if (activeSessions.length > 0) {
+              // Encontrar el jugador más avanzado
+              const mostAdvanced = activeSessions.reduce((prev, current) => 
+                current.currentQuestion > prev.currentQuestion ? current : prev
+              );
+              
+              // Encontrar el jugador más activo recientemente
+              activeSessions.sort(
+                (a, b) => new Date(b.lastActivity) - new Date(a.lastActivity)
+              );
+              const mostRecent = activeSessions[0];
+              
+              let playerInfo = "";
+              if (mostAdvanced.id === mostRecent.id) {
+                playerInfo = `🎯 Líder: ${mostAdvanced.playerName} (Pregunta ${mostAdvanced.currentQuestion} - Último activo)`;
+              } else {
+                playerInfo = `🎯 Más avanzado: ${mostAdvanced.playerName} (Pregunta ${mostAdvanced.currentQuestion}) | ⏰ Más reciente: ${mostRecent.playerName} (Pregunta ${mostRecent.currentQuestion})`;
+              }
+              
+              document.getElementById("currentPlayer").innerHTML = `<strong>Estado del juego:</strong> ${playerInfo}`;
+            } else {
+              document.getElementById("currentPlayer").innerHTML = '<strong>Estado del juego:</strong> No hay jugadores activos';
+            }
+          } else {
+            document.getElementById("currentPlayer").innerHTML = '<strong>Estado del juego:</strong> No hay jugadores registrados';
+          }
+        } catch (err) {
+          console.error("Error obteniendo jugador actual:", err);
+          document.getElementById("currentPlayer").innerHTML = '<strong>Estado del juego:</strong> Error cargando información';
+        }
+      }
+
+      // Inicializar
+      window.onload = () => {
+        loadSessions();
+        updateCurrentPlayer();
+        updateGameState();
+        loadCurrentGameInfo();
+        setInterval(() => {
+          loadSessions();
+          updateCurrentPlayer();
+          updateGameState();
+          loadCurrentGameInfo();
+        }, 5000);
+
+        // Conectar WebSocket para actualizaciones en tiempo real
+        connectWebSocket();
+      };
+
+      // Controles de juego
+      async function startGame() {
+        try {
+          const res = await fetch("/api/game/start", { method: "POST" });
+          if (!res.ok) {
+            const error = await res.json();
+            alert(`Error: ${error.error || "No se pudo iniciar la partida"}`);
+            return;
+          }
+          const data = await res.json();
+          showNotification("✅ Partida iniciada exitosamente");
+          updateGameState();
+        } catch (err) {
+          console.error("Error iniciando partida:", err);
+          alert("Error de conexión al iniciar partida");
+        }
+      }
+
+      async function endGame() {
+        // Obtener el número actual de jugadores
+        const activeTable = document.getElementById("sessionsTable");
+        const eliminatedTable = document.getElementById("eliminatedTable");
+        const activeRows = activeTable.querySelectorAll("tbody tr").length;
+        const eliminatedRows = eliminatedTable.querySelectorAll("tbody tr").length;
+        const totalPlayers = activeRows + eliminatedRows;
+
+        const confirmMessage = totalPlayers > 0 
+          ? `¿Estás seguro de que quieres terminar la partida?\n\nEsto eliminará TODOS los datos de:\n• ${activeRows} jugadores activos\n• ${eliminatedRows} jugadores eliminados\n• Todas las respuestas y progreso\n\n⚠️ Esta acción NO se puede deshacer.`
+          : `¿Estás seguro de que quieres terminar la partida?\n\nEsto limpiará todos los datos del juego.`;
+
+        if (!confirm(confirmMessage)) {
+          return;
+        }
+
+        // Mostrar indicador de procesamiento
+        const endBtn = document.getElementById("endGameBtn");
+        const originalText = endBtn.textContent;
+        endBtn.textContent = "Terminando...";
+        endBtn.disabled = true;
+
+        try {
+          const res = await fetch("/api/game/end", { method: "POST" });
+          if (!res.ok) {
+            const error = await res.json();
+            alert(`Error: ${error.error || "No se pudo terminar la partida"}`);
+            return;
+          }
+
+          const data = await res.json();
+          showNotification(`🔴 Partida terminada - ${data.data?.totalPlayers || 0} jugadores limpiados`);
+          
+          // Limpiar tablas inmediatamente para feedback visual
+          clearAllTables();
+          
+          // Actualizar estado del juego
+          updateGameState();
+        } catch (err) {
+          console.error("Error terminando partida:", err);
+          alert("Error de conexión al terminar partida");
+        } finally {
+          // Restaurar botón
+          endBtn.textContent = originalText;
+          endBtn.disabled = false;
+        }
+      }
+
+      async function nextQuestion() {
+        try {
+          const res = await fetch("/api/game/next-question", {
+            method: "POST",
+          });
+          if (!res.ok) {
+            const error = await res.json();
+            alert(`Error: ${error.error || "No se pudo avanzar pregunta"}`);
+            return;
+          }
+          showNotification("➡️ Comando enviado: Siguiente pregunta");
+        } catch (err) {
+          console.error("Error avanzando pregunta:", err);
+          alert("Error de conexión al avanzar pregunta");
+        }
+      }
+
+      async function revealAnswer() {
+        try {
+          const res = await fetch("/api/game/reveal-answer", {
+            method: "POST",
+          });
+          if (!res.ok) {
+            const error = await res.json();
+            alert(`Error: ${error.error || "No se pudo revelar respuesta"}`);
+            return;
+          }
+          showNotification("💡 Comando enviado: Revelar respuesta");
+        } catch (err) {
+          console.error("Error revelando respuesta:", err);
+          alert("Error de conexión al revelar respuesta");
+        }
+      }
+
+      // Actualizar estado del juego y botones
+      async function updateGameState() {
+        try {
+          const res = await fetch("/api/game/state");
+          if (!res.ok) return;
+
+          const data = await res.json();
+          const gameState = data.data.gameState;
+
+          const statusText = document.getElementById("statusText");
+          const startBtn = document.getElementById("startGameBtn");
+          const nextBtn = document.getElementById("nextQuestionBtn");
+          const revealBtn = document.getElementById("revealAnswerBtn");
+          const endBtn = document.getElementById("endGameBtn");
+
+          if (gameState.isActive) {
+            statusText.textContent = "Partida activa";
+            statusText.style.color = "#4caf50";
+            startBtn.disabled = true;
+            nextBtn.disabled = false;
+            revealBtn.disabled = false;
+            endBtn.disabled = false;
+          } else {
+            statusText.textContent = "Partida no iniciada";
+            statusText.style.color = "#f44336";
+            startBtn.disabled = false;
+            nextBtn.disabled = true;
+            revealBtn.disabled = true;
+            endBtn.disabled = true;
+          }
+        } catch (err) {
+          console.error("Error obteniendo estado del juego:", err);
+        }
+      }
+
+      // WebSocket para actualizaciones en tiempo real
+      function connectWebSocket() {
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onopen = () => {
+          console.log("✅ WebSocket conectado");
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log("📨 Mensaje WebSocket:", message);
+
+            if (message.type === "answerSubmitted") {
+              showNotification(
+                `${message.data.playerName} respondió ${
+                  message.data.selectedOption
+                } - ${message.data.isCorrect ? "✅ Correcto" : "❌ Incorrecto"}`
+              );
+              // Actualizar tabla inmediatamente
+              loadSessions();
+              updateCurrentPlayer();
+              if (!message.data.isCorrect) {
+                // Si la respuesta fue incorrecta, actualizar información del juego
+                loadCurrentGameInfo();
+              }
+            } else if (message.type === "lifelineUsed") {
+              showNotification(
+                `${message.data.playerName} usó comodín: ${message.data.lifelineType}`
+              );
+              loadSessions();
+            } else if (message.type === "nextQuestion") {
+              // Actualizar cuando se avanza la pregunta
+              console.log("🔄 Admin recibió comando nextQuestion");
+              loadCurrentGameInfo();
+              loadSessions();
+              updateCurrentPlayer();
+              showNotification("📝 Nueva pregunta cargada");
+            } else if (message.type === "revealAnswer") {
+              // Actualizar cuando se revela respuesta
+              console.log("🎯 Admin recibió comando revealAnswer");
+              loadSessions();
+              updateCurrentPlayer();
+              showNotification("🎯 Respuesta revelada");
+            } else if (message.type === "sessions") {
+              // Actualización automática de sesiones
+              updateSessionsTable(message.data);
+            } else if (message.type === "gameStateChanged") {
+              // Actualizar información del juego cuando cambia el estado
+              loadCurrentGameInfo();
+              updateCurrentPlayer();
+              loadSessions();
+              showNotification(
+                `Estado del juego actualizado: ${
+                  message.data.action || "Cambio"
+                }`
+              );
+            } else if (message.type === "gameEnded") {
+              // Manejar cuando la partida termina
+              console.log("🔴 Admin recibió señal de que la partida terminó");
+              showNotification(`🔴 ${message.data.message || "Partida terminada"} - ${message.data.totalPlayers || 0} jugadores`);
+              
+              // Limpiar tablas visualmente con un pequeño delay para dar tiempo al mensaje
+              setTimeout(() => {
+                clearAllTables();
+                updateGameState();
+              }, 1000);
+            }
+          } catch (err) {
+            console.error("Error procesando mensaje WebSocket:", err);
+          }
+        };
+
+        ws.onclose = () => {
+          console.log("🔌 WebSocket desconectado, reintentando en 3s...");
+          setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = (err) => {
+          console.error("❌ Error WebSocket:", err);
+        };
+      }
+
+      // Mostrar notificación temporal
+      function showNotification(message) {
+        // Crear div de notificación
+        const notification = document.createElement("div");
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: var(--gold-dark);
+          color: white;
+          padding: 15px 20px;
+          border-radius: 10px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          z-index: 1000;
+          font-weight: bold;
+          animation: slideInFromRight 0.3s ease;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        // Remover después de 5 segundos
+        setTimeout(() => {
+          notification.remove();
+        }, 5000);
+      }
+
+      // Actualizar tabla con datos del WebSocket
+      function updateSessionsTable(sessions) {
+        if (!Array.isArray(sessions)) return;
+
+        // Separar jugadores activos y eliminados/espectadores (misma lógica que loadSessions)
+        const activeSessions = sessions.filter(
+          (s) =>
+            s.gameStatus === "active" ||
+            s.gameStatus === "playing" ||
+            s.gameStatus === "waiting"
+        );
+
+        const eliminatedSessions = sessions.filter(
+          (s) =>
+            s.gameStatus === "eliminated" ||
+            s.gameStatus === "finished" ||
+            s.gameStatus === "gameOver" ||
+            s.gameStatus === "spectator"
+        );
+
+        console.log(
+          "🔄 Actualizando tablas WebSocket - Activos:",
+          activeSessions.length,
+          "Eliminados:",
+          eliminatedSessions.length
+        );
+
+        // Actualizar tabla de jugadores activos
+        const tbody = document.querySelector("#sessionsTable tbody");
+        tbody.innerHTML = "";
+        if (activeSessions.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="8" class="empty-table">No hay jugadores activos</td></tr>';
+        } else {
+          activeSessions.forEach((s) => {
+            const lastAnswer =
+              s.answersGiven && s.answersGiven.length > 0
+                ? s.answersGiven[s.answersGiven.length - 1].selectedOption
+                : "-";
+            const lastAct = new Date(s.lastActivity).toLocaleTimeString();
+            const score = s.score || s.totalPrize || 0;
+            const statusClass = `game-status-${s.gameStatus}`;
+            const tr = document.createElement("tr");
+            tr.className = "player-active";
+            tr.innerHTML = `
+              <td>${s.id}</td>
+              <td>${s.playerName}</td>
+              <td>${s.currentQuestion}</td>
+              <td><span class="${statusClass}">${s.gameStatus}</span></td>
+              <td>$${score.toLocaleString()}</td>
+              <td>${s.answersGiven.length}</td>
+              <td>${lastAct}</td>
+              <td>${lastAnswer}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        // Actualizar tabla de jugadores eliminados
+        const eliminatedTbody = document.querySelector(
+          "#eliminatedTable tbody"
+        );
+        eliminatedTbody.innerHTML = "";
+        if (eliminatedSessions.length === 0) {
+          eliminatedTbody.innerHTML =
+            '<tr><td colspan="6" class="empty-table">Ningún jugador ha sido eliminado aún</td></tr>';
+        } else {
+          eliminatedSessions.forEach((s) => {
+            const lastIncorrectAnswer =
+              s.answersGiven && s.answersGiven.length > 0
+                ? s.answersGiven.find((answer) => !answer.isCorrect)
+                : null;
+
+            const failedQuestion = lastIncorrectAnswer
+              ? lastIncorrectAnswer.questionId
+              : s.currentQuestion;
+            const incorrectAnswer = lastIncorrectAnswer
+              ? lastIncorrectAnswer.selectedOption
+              : "-";
+            const correctAnswer = lastIncorrectAnswer
+              ? lastIncorrectAnswer.correctAnswer
+              : "-";
+            const finalScore = s.score || s.totalPrize || 0;
+            const eliminationTime = new Date(
+              s.lastActivity
+            ).toLocaleTimeString();
+
+            const tr = document.createElement("tr");
+            tr.className = "player-eliminated";
+            tr.innerHTML = `
+              <td>${s.playerName}</td>
+              <td>${failedQuestion}</td>
+              <td>${incorrectAnswer}</td>
+              <td>${correctAnswer}</td>
+              <td>$${finalScore.toLocaleString()}</td>
+              <td>${eliminationTime}</td>
+            `;
+            eliminatedTbody.appendChild(tr);
+          });
+        }
+      }
+
+      // Función para limpiar todas las tablas visualmente
+      function clearAllTables() {
+        const activeTableBody = document.querySelector("#sessionsTable tbody");
+        const eliminatedTableBody = document.querySelector("#eliminatedTable tbody");
+        
+        // Limpiar tabla de jugadores activos
+        activeTableBody.innerHTML = '<tr><td colspan="8" class="empty-table">Partida terminada - Datos limpiados</td></tr>';
+        
+        // Limpiar tabla de jugadores eliminados
+        eliminatedTableBody.innerHTML = '<tr><td colspan="6" class="empty-table">Partida terminada - Datos limpiados</td></tr>';
+        
+        // Limpiar información de juego actual
+        const gameInfo = document.querySelector('.game-info');
+        if (gameInfo) {
+          gameInfo.innerHTML = '<div class="current-question">⏹️ Partida terminada</div><div class="current-answer">Todos los datos han sido limpiados del sistema</div>';
+        }
+        
+        // Limpiar jugador en turno
+        const currentPlayerDiv = document.querySelector('[id*="currentPlayer"]');
+        if (currentPlayerDiv) {
+          currentPlayerDiv.innerHTML = '<strong>Jugador en turno:</strong> Ninguno (partida terminada)';
+        }
+      }
+    </script>
+  </body>
+</html>
